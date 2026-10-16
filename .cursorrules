@@ -1,0 +1,37 @@
+# Operation REBIRTH — Cursor rules
+
+This repo also has an `AGENTS.md` at the root with full architecture notes. Read it first.
+The rules below summarize and enforce the same conventions for Cursor.
+
+## Project shape
+
+- A 2D pixel-art platform fighter built on Phaser 4, plain ES modules (no TypeScript, no JSX, no UI framework).
+- Single package at the repo root. No monorepo/workspaces. Only `vite` in `devDependencies` — don't add a UI framework, state management library, linter, or build tool without explicit approval.
+
+## Dev loop
+
+- `npm install`, `npm run dev` (Vite dev server), `npm run build` (static `dist/`), `npm run preview`.
+- No linter, formatter, or test suite exists. After non-trivial changes, run `npm run build` to catch syntax/import errors — this is the only automated check available. Reason manually through gameplay-affecting changes.
+- Deployment is automatic on push to `main` via `.github/workflows/deploy-pages.yml`. Never deploy manually.
+
+## Where things live
+
+- `src/main.js` — entry point, registers scenes in order: `BootScene` → `TitleScene` → `SetupScene` → `MatchScene` → `ResultsScene`.
+- `src/scenes/MatchScene.js` — the fight loop: fixed 60 Hz `tick()` (via `STEP_MS` in `src/config.js`), three cameras (bg/world/UI), hitbox/hurtbox resolution (`resolveHits`), match rules (stock/time/stamina).
+- `src/fighters/Fighter.js` — fighter state machine and physics. `this.state = 'x'` dispatches to a `st_x` method each tick. Position `(x, y)` is between the feet; `y` grows downward.
+- `src/fighters/soulSummoner.js` — the one existing fighter kit (moves/hitboxes/sprite refs).
+- `src/fighters/entities.js` — spawned combat objects (`Fireball`, `Soul`); each exposes `step()`, `hitbox()`/`hurtbox()`, `render()`.
+- `src/input/controllers.js` — shared `Controller` interface (`held`/`pressed`/`released`, stick `x`/`y`) implemented by keyboard, gamepad, merged, and CPU controllers. Never special-case human vs. CPU in fighter code — go through this interface.
+- `src/ai/cpu.js` — `CpuController`, drives a `Controller` using `DIFFICULTY` from `src/config.js`.
+- `src/config.js` — single source of truth for tunable constants (viewport, `PHYS`, blast zones, player colors/tints, `LIMIT_MAX`, `DIFFICULTY`). Add new tunables here, not as magic numbers elsewhere.
+- `src/settings.js` — mutable match setup state (mode, stocks, cpuCount, difficulty, volumes, pads). Plain mutable object, not a store.
+- `src/stage/skyStage.js`, `src/items/items.js`, `src/ui/hud.js`, `src/audio/sfx.js` — self-contained supporting systems consumed by `MatchScene`.
+- `public/assets/` — sprite sheets and sound files loaded at runtime (via `BootScene`).
+- `tools/sprites/`, `tools/audio/` — offline Python/SVG generator scripts for those assets, not part of the build. Prefer editing the generator and regenerating over hand-editing binary/generated output.
+
+## Code conventions
+
+- Physics values are in pixels per frame at 60 FPS. Keep new movement/physics code in the same units.
+- Player-indexed data is stored in parallel arrays indexed by `slot` (0-3), not objects keyed by id.
+- Match each file's existing terse, dense style (multiple statements per line, minimal whitespace) rather than reformatting wholesale.
+- Plain ES2022 modules only — no TypeScript, no JSX, semicolons used throughout.
