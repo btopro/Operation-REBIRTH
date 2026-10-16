@@ -26,23 +26,25 @@ def save(name, x):
     with wave.open(name, "wb") as w:
         w.setnchannels(1); w.setsampwidth(1); w.setframerate(SR); w.writeframes(data.tobytes())
 
-# 1) quick throw: pitch dive + noise whoosh
-n = int(0.32 * SR); t = np.arange(n) / SR
-f = 900 * np.exp(-t * 9) + 110
-x = 0.55 * square(f) + 0.6 * noise(n, 3) * np.exp(-t * 6)
-save("fireball_throw.wav", x * env(n, 0.02))
-
-# 2) charge loop: rising stepped arpeggio + crackle
-n = int(1.2 * SR); t = np.arange(n) / SR
-base = 180 * 2 ** (t / 1.2 * 2)                          # rises two octaves
-arp = np.array([1, 1.25, 1.5, 2])[(np.floor(t * 30) % 4).astype(int)]
-x = 0.5 * square(base * arp) * (0.6 + 0.4 * (np.floor(t * 20) % 2))
-x += 0.35 * noise(n, 6) * (rng.random(n // 300 + 1).repeat(300)[:n] > 0.6)
-save("fireball_charge.wav", x * np.minimum(1, t / 0.05))
-
-# 3) fully charged throw: bigger, lower, longer tail
+# Throw: big, low pitch dive with a rumbling fire tail (the "charged throw" the user picked)
 n = int(0.7 * SR); t = np.arange(n) / SR
 f = 600 * np.exp(-t * 6) + 55
 x = 0.5 * square(f) + 0.35 * square(f * 0.5) + 0.8 * noise(n, 5) * np.exp(-t * 3)
-save("fireball_charged_throw.wav", x * env(n, 0.01, 1.2))
+save("fireball_throw.wav", x * env(n, 0.01, 1.2))
+
+# Charge: plays while K is held. A pulse-wave whine that climbs with fast vibrato, over fire
+# crackles that get denser as it charges, ending in a bright two-note "ready" chime at full power.
+n = int(1.5 * SR); t = np.arange(n) / SR
+p = t / t[-1]                                            # 0 -> 1 charge progress
+whine = 110 * 2 ** (p * 2.5) * (1 + 0.04 * np.sign(np.sin(2 * np.pi * (8 + 16 * p) * t)))
+ph = np.cumsum(whine) / SR
+pulse = np.where((ph % 1) < (0.5 - 0.375 * p), 1.0, -1.0)   # duty cycle narrows = thinner, hotter tone
+crackle_gate = rng.random(n // 200 + 1).repeat(200)[:n] < (0.15 + 0.6 * p)
+crackle = noise(n, 2) * crackle_gate * (0.2 + 0.4 * p)
+x = 0.45 * pulse * (0.4 + 0.6 * p) + crackle
+ding_at = int(1.25 * SR)                                   # full-charge chime
+for k, fr in enumerate((1318.5, 1760.0)):
+    s = ding_at + k * int(0.06 * SR); m = n - s; tt = np.arange(m) / SR
+    x[s:] += 0.5 * square(np.full(m, fr)) * np.exp(-tt * 14)
+save("fireball_charge.wav", x * np.minimum(1, t / 0.04))
 print("ok")
