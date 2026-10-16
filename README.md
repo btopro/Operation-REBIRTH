@@ -28,3 +28,8 @@ On the setup screen, press A on a controller to join as a new player, Y to contr
 - `src/` game code: `scenes/`, `fighters/`, `input/`, `ai/`, `items/`, `stage/`, `ui/`, `audio/`
 - `public/assets/` sprite sheets and sound files the game loads
 - `tools/` scripts that generate art and sound (`sprites/`, `audio/`)
+
+## Play online
+
+The game is published to GitHub Pages at **https://kobrabro12.github.io/Operation-REBIRTH/**.
+Every push to `main` rebuilds and republishes it (see `.github/workflows/deploy-pages.yml`).
