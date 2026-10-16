@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operation REBIRTH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <style>
+    :root { --bg: #0b0a14; --ink: #f0f2f3; --muted: #8a87a3; }
+    @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #0b0a14; } }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; }
+    body { display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P', monospace; }
+    #game { width: 100vw; height: 100vh; }
+    #game canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+    #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; color: var(--muted); pointer-events: none; }
+  </style>
+</head>
+<body>
+  <div id="loading">LOADING...</div>
+  <div id="game"></div>
+  <script src="https://cdn.jsdelivr.net/npm/phaser@4.2.1/dist/phaser.min.js"></script>
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
