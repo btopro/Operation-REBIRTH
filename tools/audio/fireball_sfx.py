@@ -46,5 +46,22 @@ ding_at = int(1.25 * SR)                                   # full-charge chime
 for k, fr in enumerate((1318.5, 1760.0)):
     s = ding_at + k * int(0.06 * SR); m = n - s; tt = np.arange(m) / SR
     x[s:] += 0.5 * square(np.full(m, fr)) * np.exp(-tt * 14)
-save("fireball_charge.wav", x * np.minimum(1, t / 0.04))
+x = x * np.minimum(1, t / 0.04)
+
+# Whirl at the end: a swirling "fully charged" sound -- the pitch spins fast around a centre
+# while a whooshing noise speeds up and slows down, as if the flame is spinning in his hand.
+m = int(0.7 * SR); tw = np.arange(m) / SR; q = tw / tw[-1]
+spin = 14 + 10 * np.sin(np.pi * q)                        # spin speeds up, then settles
+centre = 520 + 180 * q
+wf = centre + 260 * np.sin(2 * np.pi * np.cumsum(spin) / SR)
+tone = 0.5 * square(wf) + 0.25 * square(wf * 1.5)
+step = np.clip((6 - 4 * np.abs(np.sin(2 * np.pi * np.cumsum(spin) / SR))).astype(int), 2, 6)
+wh = np.empty(m); i = 0; v = 0.0
+while i < m:                                              # noise whose grain follows the spin = whoosh
+    v = rng.uniform(-1, 1); k = step[i]; wh[i:i + k] = v; i += k
+whirl = (tone + 0.45 * wh) * np.sin(np.pi * q) ** 0.6 * (0.75 + 0.25 * np.sin(2 * np.pi * np.cumsum(spin) / SR))
+overlap = int(0.1 * SR)                                   # blend into the tail of the chime
+out = np.concatenate([x, np.zeros(m - overlap)])
+out[len(x) - overlap:] += whirl
+save("fireball_charge.wav", out)
 print("ok")
