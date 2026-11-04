@@ -36,4 +36,8 @@ export default defineConfig({
   // optimizePngPlugin: after a build, rewrites dist/'s PNGs as exact palette PNGs (same pixels, smaller
   // files; tools/build/optimize-png.mjs). Set SKIP_PNG_OPTIMIZE=1 for a quick unoptimized build.
   plugins: [voiceStudio(), optimizePngPlugin()],
+  // Phaser in its own file: it changes far less often than the game, so after an update players'
+  // browsers can keep the copy they have and only fetch the game's code again.
+  // terser squeezes the code ~4% smaller than Vite's default minifier (about 15 KB gzipped off Phaser).
+  build: { minify: 'terser', rollupOptions: { output: { manualChunks: (id) => (id.includes('node_modules/phaser/') ? 'phaser' : undefined) } } },
 });
