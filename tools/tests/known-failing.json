@@ -1,11 +1,4 @@
 {
-  "note": "Tests that already failed on kobrabro12/main when CI was added (checked 4 Nov 2026, the same error with and without the btopro speed PRs). npm test still runs them and prints their result, but they don't fail the run. Fix one, then delete its line; if one starts passing, npm test says so.",
-  "tests": {
-    "matrix-stage.mjs": "Error: stage inaccessible",
-    "premium-animations.mjs": "Error: idle origin",
-    "soul-evolution.mjs": "Error: Seventeen earned Mains missing",
-    "soul-setup.mjs": "Error: Shadow portrait must contain visible art and red eyes",
-    "young-link.mjs": "Error: Missing visible art credit",
-    "mobile-assets.py": "tools/sprites/sprite_loads.mjs exits with an error"
-  }
+  "note": "Tests known to fail, which npm test runs and reports but doesn't fail on. Empty: all six that failed when CI was added were fixed (4 Nov 2026). Add one here only with a reason, and fix it soon.",
+  "tests": {}
 }

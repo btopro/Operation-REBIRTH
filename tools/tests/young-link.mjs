@@ -15,7 +15,7 @@ try{
   if([...TEST_ROSTER,...ROSTER].some(r=>r.id==='kirby'))throw Error('Kirby remains');
   if(!TEST_ROSTER.find(r=>r.id==='young-link'))throw Error('Young Link missing');
   for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);
-  window.game.scene.start('TestFighters');await new Promise(r=>setTimeout(r,100));const lab=window.game.scene.getScene('TestFighters');lab.update();
+  window.game.scene.start('TestFighters');await new Promise(r=>setTimeout(r,100));const lab=window.game.scene.getScene('TestFighters');lab.sel=TEST_ROSTER.findIndex(r=>r.id==='young-link');lab.update();
   if(!lab.notes.text.includes('GREGARLINK10'))throw Error('Missing visible art credit');
   window.game.scene.stop('TestFighters');Object.assign(settings,{mode:'stock',stocks:3,picks:['young-link','hero-knight'],skins:[0,0],cpuCount:1,p1Pad:null,extraPads:[],stage:'gravemoon-bridge',items:false,hazards:false,crt:false});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,150));const m=window.game.scene.getScene('Match'),f=m.fighters[0],rival=m.fighters[1];
   if(f.def.id!=='young-link'||m.intros.list[0].I.kind!=='drop')throw Error('Wrong fighter/intro');
