@@ -61,6 +61,7 @@ import { addFullscreenButton } from '../ui/fullscreen.js';
 import { MenuInput } from './menuInput.js';
 import { Training, DummyController } from './training.js';
 import { TouchPad, TouchController, touchEnabled } from '../input/touch.js';
+import { Recorder, recordingWanted } from '../debug/recorder.js';
 
 export class MatchScene extends Phaser.Scene {
   constructor() { super('Match'); }
@@ -74,6 +75,8 @@ export class MatchScene extends Phaser.Scene {
     // demoRequest.settings: a fixed all-CPU setup instead of a random one (used by tools/sim)
     this.demo = !this.shopPreview && !this.soulBattle && demoRequest.next; demoRequest.next = false; this.demoTime = 0;
     const S = this.soulBattle?.setup || this.shopPreview?.setup || (this.demo ? (demoRequest.settings || demoSettings()) : settings); demoRequest.settings = null;
+    // DEBUG RECORDING (training button 8, or ?debug=1): starts before anything uses Math.random (src/debug/recorder.js)
+    this.recorder = recordingWanted(this) ? new Recorder(this, S) : null;
     this.mode = S.mode;
     this.challengeNotices = []; this.challengeNoticeAt = -180;
     this.feedbackTimes = new Map();
@@ -185,6 +188,7 @@ export class MatchScene extends Phaser.Scene {
       this.addUI(this.previewTitle,this.previewHelp);
     }
     this.events.once('shutdown', () => this.cleanup());
+    if (this.recorder) this.recorder.attach();
   }
 
   // ---- camera bookkeeping: every object belongs to exactly one camera

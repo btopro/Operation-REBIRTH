@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { optimizePngPlugin } from './tools/build/optimize-png.mjs';
 import { webpPlugin } from './tools/build/webp.mjs';
 
@@ -32,8 +33,13 @@ function voiceStudio() {
 
 // Relative paths so the built game works from any folder, including
 // GitHub Pages' https://<user>.github.io/Operation-REBIRTH/ address.
+// The commit a build was made from, stamped into debug recordings (src/debug/recorder.js) so a replay
+// can be run on the same version of the game.
+const COMMIT = (() => { try { return execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); } catch (e) { return 'unknown'; } })();
+
 export default defineConfig({
   base: './',
+  define: { __GAME_COMMIT__: JSON.stringify(COMMIT) },
   // optimizePngPlugin: after a build, rewrites dist/'s PNGs as exact palette PNGs (same pixels, smaller
   // files; tools/build/optimize-png.mjs). Set SKIP_PNG_OPTIMIZE=1 for a quick unoptimized build.
   // webpPlugin: images over 256 colours also get a smaller .webp in dist/, which src/webp.js loads instead
