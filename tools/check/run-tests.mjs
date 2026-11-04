@@ -9,6 +9,8 @@ import path from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 
 const DIR = 'tools/tests', TIMEOUT = 5 * 60 * 1000;
+// tests that were already failing when CI was added: they run and report, but don't fail the run
+const KNOWN = (() => { try { return JSON.parse(fs.readFileSync(path.join(DIR, 'known-failing.json'), 'utf8')).tests || {}; } catch (e) { return {}; } })();
 const words = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const chrome = process.env.SIM_CHROME || ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'].find((p) => fs.existsSync(p));
@@ -23,10 +25,13 @@ for (const f of tests) {
   const r = spawnSync(py ? 'python3' : process.execPath, [file], { encoding: 'utf8', timeout: TIMEOUT, env: { ...process.env, ...(chrome ? { SIM_CHROME: chrome } : {}) } });
   const secs = ((Date.now() - t0) / 1000).toFixed(0);
   const out = ((r.stdout || '') + (r.stderr || '')).trim().split('\n');
-  const status = r.error && r.error.code === 'ETIMEDOUT' ? 'timeout' : r.status === 0 ? 'pass' : 'FAIL';
-  results.push({ f, status, secs, tail: status === 'pass' ? '' : out.slice(-4).join('\n      ') });
-  console.log(`${status.padEnd(7)} ${secs.padStart(4)}s  ${f}${status === 'pass' ? '' : '\n      ' + results.at(-1).tail}`);
+  let status = r.error && r.error.code === 'ETIMEDOUT' ? 'timeout' : r.status === 0 ? 'pass' : 'FAIL';
+  if (KNOWN[f]) status = status === 'pass' ? 'FIXED' : 'known';
+  const tail = status === 'pass' ? '' : status === 'known' ? 'already failing (known-failing.json): ' + KNOWN[f] : status === 'FIXED' ? 'passes now - remove it from tools/tests/known-failing.json' : out.slice(-4).join('\n      ');
+  results.push({ f, status, secs, tail });
+  console.log(`${status.padEnd(7)} ${secs.padStart(4)}s  ${f}${tail ? '\n      ' + tail : ''}`);
 }
 const failed = results.filter((r) => r.status === 'FAIL' || r.status === 'timeout');
-console.log(`\ntests: ${results.filter((r) => r.status === 'pass').length} passed, ${failed.length} failed, ${results.filter((r) => r.status === 'skip').length} skipped${chrome ? '' : ' (no Chrome found: set SIM_CHROME)'}`);
+const count = (s) => results.filter((r) => r.status === s).length;
+console.log(`\ntests: ${count('pass')} passed, ${failed.length} failed, ${count('known')} known failures, ${count('FIXED')} known failures now passing, ${count('skip')} skipped${chrome ? '' : ' (no Chrome found: set SIM_CHROME)'}`);
 process.exit(failed.length ? 1 : 0);
