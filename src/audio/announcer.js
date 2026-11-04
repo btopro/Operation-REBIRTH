@@ -1,3 +1,4 @@
+import {CHARACTER_NAME_CALLS,FIGHTER_ANNOUNCER_IDS} from './speechPolicy.js';
 // The announcer: calls out a fighter's name when a player picks them on the select screen, and the stage's
 // name when one is picked (computer voice from tools/audio/announcer.py; tools/audio/my_voice.py swaps
 // in your own recordings). Follows the SOUND EFFECTS volume. A new
@@ -7,6 +8,7 @@ import { settings } from '../settings.js';
 let current = null;
 
 export function announce(scene, id) {
+  if(!CHARACTER_NAME_CALLS&&FIGHTER_ANNOUNCER_IDS.has(id))return;
   const key = 'voice_' + id;
   if (!scene.cache.audio.exists(key) || settings.sfxVolume <= 0) return;
   if (current) { current.stop(); current.destroy(); current = null; }

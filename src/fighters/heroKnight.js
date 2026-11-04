@@ -15,7 +15,7 @@ export const HERO_KNIGHT = {
   id: 'hero-knight',
   name: 'LACY',
   // every strip is 150x90 per frame, feet at (66, 86) inside the frame
-  sheets: { idle: 'hk_idle', run: 'hk_run', attack1: 'hk_attack1', attack2: 'hk_attack2', jump: 'hk_jump', fall: 'hk_fall', hit: 'hk_hit', death: 'hk_death', guard: 'hk_guard', grab: 'hk_grab',
+  sheets: { shrine:'hk_shrine',shrine_turn:'hk_shrine_turn',shrine_release_u:'hk_shrine_release_u',shrine_weapon:'hk_shrine_weapon', idle: 'hk_idle', run: 'hk_run', attack1: 'hk_attack1', attack2: 'hk_attack2', jump: 'hk_jump', fall: 'hk_fall', hit: 'hk_hit', death: 'hk_death', guard: 'hk_guard', counter: 'hk_counter', grab: 'hk_grab',
     // the same movement strips without her sword, while it's out spinning (tools/sprites/hero_knight_unarmed.py)
     idle_u: 'hk_idle_u', run_u: 'hk_run_u', jump_u: 'hk_jump_u', fall_u: 'hk_fall_u', hit_u: 'hk_hit_u',
     // her own tilts and aerials (tools/sprites/hero_knight_moves.py): bigger 180x140 frames, feet at (81, 111)
@@ -23,14 +23,14 @@ export const HERO_KNIGHT = {
   moveAnims: HK_MOVES, movesOrigin: [81 / 180, 111 / 140],
   // BATTLE-WORN costume: the armour cracks a little more each time she loses a stock
   // (tools/sprites/hero_knight_worn.py). Stage 0 is her normal look.
-  wornSheets: [0, 1, 2, 3].map((w) => Object.fromEntries(['idle', 'run', 'attack1', 'attack2', 'jump', 'fall', 'hit', 'death', 'guard', 'grab', 'idle_u', 'run_u', 'jump_u', 'fall_u', 'hit_u', 'moves']
+  wornSheets: [0, 1, 2, 3].map((w) => Object.fromEntries(['idle', 'run', 'attack1', 'attack2', 'jump', 'fall', 'hit', 'death', 'guard', 'counter', 'grab', 'idle_u', 'run_u', 'jump_u', 'fall_u', 'hit_u', 'moves']
     .map((k) => [k, w ? 'hk_w' + w + '_' + k : 'hk_' + k]))),
   // SAMURAI costume: her own strips with red samurai armour and a katana (tools/sprites/hero_knight_samurai.py)
   // OBSIDIAN / CYBERBLADE (shop costumes): tools/sprites/shop_costumes.py
   // AKATSUKI costume: crimson tunic, leather belt, cloth boots and a crystal sword (tools/sprites/hero_knight_akatsuki.py)
-  costumeSheets: Object.fromEntries([['samurai', 'hk_sam_'], ['akatsuki', 'hk_aka_'], ['obsidian', 'hk_obs_'], ['cyber', 'hk_cyb_'], ['verdant', 'hk_ver_'], ['liberty', 'hk_lib_']].map(([set, pre]) => [set,
-    Object.fromEntries(['idle', 'run', 'attack1', 'attack2', 'jump', 'fall', 'hit', 'death', 'guard', 'grab', 'idle_u', 'run_u', 'jump_u', 'fall_u', 'hit_u', 'moves'].map((k) => [k, pre + k]))])),
-  frameCounts: { idle: 11, run: 8, attack1: 7, attack2: 7, jump: 3, fall: 3, hit: 4, death: 11, guard: 1, grab: 10, idle_u: 11, run_u: 8, jump_u: 3, fall_u: 3, hit_u: 4 },
+  costumeSheets: Object.fromEntries([['samurai', 'hk_sam_'], ['akatsuki', 'hk_aka_'], ['obsidian', 'hk_obs_'], ['cyber', 'hk_cyb_'], ['verdant', 'hk_ver_'], ['liberty', 'hk_lib_'], ['prism', 'hk_prism_']].map(([set, pre]) => [set,
+    Object.fromEntries(['idle', 'run', 'attack1', 'attack2', 'jump', 'fall', 'hit', 'death', 'guard', 'counter', 'grab', 'idle_u', 'run_u', 'jump_u', 'fall_u', 'hit_u', 'moves'].map((k) => [k, pre + k]))])),
+  frameCounts: { idle: 11, run: 8, attack1: 7, attack2: 7, jump: 3, fall: 3, hit: 4, death: 11, guard: 1, counter: 3, shrine:20, shrine_turn:12, shrine_release_u:10, shrine_weapon:1, grab: 10, idle_u: 11, run_u: 8, jump_u: 3, fall_u: 3, hit_u: 4 },
   ownAnims: true,                 // drawn with the strips above (see Fighter.animFrame)
   originX: 66 / 150, originY: 86 / 90,
   handOffset: { x: 20, y: -30 },
@@ -149,3 +149,4 @@ export const HERO_KNIGHT = {
     colors: BEAM_STEEL,
   },
 };
+

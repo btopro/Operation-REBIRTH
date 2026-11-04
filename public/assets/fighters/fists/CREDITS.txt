@@ -1,0 +1,4 @@
+Native Mii Brawler JUS sprites: TheSpriteAnimations.
+Extracted from the original sprite sheet supplied by the user.
+Original filename: mii_brawler_jus_sprite_sheet_by_thespriteanimations_dlsuu9x.png
+No generated replacement sprites; lossless background key and nearest-neighbor 1.5x scaling.

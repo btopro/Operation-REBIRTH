@@ -301,37 +301,29 @@ def mw_sakura(N, L):
     return [], set(), None
 
 def mw_plague(N, L):
-    B = {'o': 0x1a120a, '1': 0x5a3a1e, '2': 0x8a6438, '3': 0xb8925a, '4': 0xe0c890}
-    # the long beaked mask, out from his face
-    K.stamp(N['head'], 42, 14, ["oooo.....",
-                                "3442oo...",
-                                "23332ooo.",
-                                "1222233oo",
-                                ".oo11122o",
-                                "....oooo."], B)
-    # the white mask becomes leather like the beak; its dark eye holes become green glass goggles
-    hd = N['head']; mask = []
-    for y in range(8, 22):
-        for x in range(32, 46):
-            if hd[y, x, 3]:
-                r, g_, b = (int(c) for c in hd[y, x, :3]); h_, s_, v = K._rgb2hsv(r, g_, b)
-                if v > 0.7 and s_ < 0.2: mask.append((x, y)); hd[y, x, :3] = K.hexrgb(0xd8bc84 if v > 0.9 else 0xb8925a)
-    near = {(x + dx, y + dy) for x, y in mask for dx in (-1, 0, 1) for dy in (-1, 0, 1)}
-    for x, y in near:
-        if (x, y) not in mask and hd[y, x, 3] and K.shade_of(hd[y, x]) < 0.2 and 34 <= x <= 44: K.put(hd, x, y, 0x123a22)
-    # the gem becomes a lantern: an iron cage round it, a hook on top
-    K.stamp(N['staff'], 10, 10, ["...oo...",
-                                 "..o..o..",
-                                 "oooooooo",
-                                 "o......o",
-                                 "o......o",
-                                 "o......o",
-                                 "o......o",
-                                 "o......o",
-                                 "o......o",
-                                 "o......o",
-                                 "oooooooo",
-                                 "..oooo.."], {'o': 0x2a2a2a}, only_empty=True)
+    # Ivory respirator, jade lenses, brass quarantine regalia and a caged soul lantern.
+    P={'o':0x121d20,'1':0x5d695c,'2':0xa7b899,'3':0xd9dfbe,'4':0xfff4d0,'b':0x927344,'g':0xbee87e,'j':0x4da773}
+    hd=N['head']
+    for y in range(8,23):
+        for x in range(32,47):
+            if hd[y,x,3]:
+                r,g,b=(int(c) for c in hd[y,x,:3]);h,sa,v=K._rgb2hsv(r,g,b)
+                if v>.65 and sa<.3: hd[y,x,:3]=K.hexrgb(0xe5e5c8 if v>.85 else 0xa7b899)
+    K.stamp(hd,42,14,['ooo.......','3443oo....','233443ooo.','122233443o','.oo11122oo','....oooo..'],P)
+    K.stamp(hd,37,12,['obbbbo','bgggjb','bg44jb','objjbo'],P)
+    # Brass hatband, broad black brim and a wax seal, all head-rigged.
+    K.stamp(hd,29,8,['obbbbbbbbbbbbbbo','o11111111111111o'],P)
+    K.stamp(hd,31,5,['.b.','bgb','.b.'],P)
+    for name in ('cape','bskirt','fskirt','torso'):
+        lay=N[name];ys,xs=np.nonzero(lay[...,3]>0)
+        for x,y in zip(xs,ys):
+            if y>31 and y<58 and (x*3+y)%19==0: K.put(lay,x,y,0x788052)
+            if y>40 and (y%9==0) and x+1<64 and not lay[y,x+1,3]: K.put(lay,x,y,0xb79b61)
+    # Raised brass collar, buttons and alchemical embroidery.
+    K.stamp(N['torso'],35,23,['b......b','ob....bo','.b.oo.b.','..bgjb..','...bb...'],P,only_full=True)
+    for y in (32,37,42): K.stamp(N['torso'],42,y,['b','g'],P,only_full=True)
+    staff=N['staff']
+    K.stamp(staff,8,7,['.....b.....','....b.b....','...bbbbb...','..booooob..','.bojjjjjob.','.bojjggjob.','.bojg4gjob.','.bojjggjob.','.bojjjjjob.','.bojjjjjob.','..booooob..','...bbbbb...','....b.b....','.....b.....'],P)
     return [], set(), None
 
 def mw_teatime(N, L):

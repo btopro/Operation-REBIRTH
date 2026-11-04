@@ -10,6 +10,7 @@ export const settings = {
   items: true,
   hazards: true,
   crt: false,
+  performance:'auto', // auto detects phones; low reduces decorative effects; full keeps them all
   touch: 'auto',      // on-screen touch controls: 'auto' (touch screens) | 'on' | 'off'
   musicVolume: 0.6,
   sfxVolume: 0.8,
@@ -43,7 +44,7 @@ try {
   if (o && ['auto', 'on', 'off'].includes(o.touch)) settings.touch = o.touch;
 } catch (e) { /* storage unavailable: keep the defaults */ }
 export function saveOptions() {
-  try { localStorage.setItem(OPT_KEY, JSON.stringify({ crt: settings.crt, touch: settings.touch })); } catch (e) { /* ignore */ }
+  try { localStorage.setItem(OPT_KEY, JSON.stringify({ crt: settings.crt, touch: settings.touch, performance:settings.performance })); } catch (e) { /* ignore */ }
 }
 
 export const MODE_NAMES = { stock: 'STOCK', time: 'TIMED BATTLE', stamina: 'STAMINA', training: 'TRAINING' };

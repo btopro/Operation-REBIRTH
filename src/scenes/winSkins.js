@@ -19,6 +19,8 @@
 // Each entry: like CUTS in WinScene.js, plus fn: the prefix of its shot_<fn>_<shot> methods (below, mixed into
 // WinScene). They use WinScene's helpers (sky, idle, move, closeUp, posLosers, vignette, glow, ...) and its pool of
 // text lines (this.tvLines).
+import { PREMIUM_CUTS } from './premiumOutros.js';
+import { SHOWCASE_CUTS } from './skinShowcase.js';
 import { VIEW_W, VIEW_H } from '../config.js';
 import { sfx } from '../audio/sfx.js';
 import { SEEN } from '../fighters/lastSeen.js';
@@ -27,6 +29,8 @@ import { skinTexture, skinInfo } from '../fighters/skins.js';
 const W = VIEW_W, H = VIEW_H;
 
 export const SKIN_CUTS = {
+  ...SHOWCASE_CUTS,
+  ...PREMIUM_CUTS,
   "soul-summoner:JACK-O'-LANTERN": { fn: 'ss_pumpkin', len: 420, card: 262, name: 'SOUL SUMMONER', sub: "JACK-O'-LANTERN", line: 'TRICK OR TREAT? YOU GOT TRICKED.',
     color: '#ffa63a', stroke: '#2a0a04', shots: [[0, 'patch'], [128, 'carve'], [214, 'parade']] },
   'mr-wake:NEON': { fn: 'wake_neon', len: 440, card: 300, name: 'MR WAKE', sub: 'NEON - HIGH SCORE', line: 'INSERT COIN TO TRY AGAIN.',
@@ -876,7 +880,7 @@ export class SkinShots {
       if (!l.def || !l.s.visible) return;
       const b = l.s.getBounds(), p = Math.max(0, Math.min(1, (s - 10 - i * 12) / 40)), cut = b.y + b.height * p;
       if (p >= 1) { l.s.setVisible(false); return; }
-      const fw = l.s.frame.width, fh = l.s.frame.height; l.s.setCrop(0, fh * p, fw, fh * (1 - p));   // erased from the top down
+      const fw = l.s.frame.realWidth, fh = l.s.frame.realHeight; l.s.setCrop(0, fh * p, fw, fh * (1 - p));   // erased from the top down
       for (let j = 0; j < 10; j++) { this.fx.fillStyle(j % 2 ? 0x5aff8a : 0xffffff, 1); this.fx.fillRect(b.x + ((j * 37 + s * 13) % Math.max(1, b.width)), cut - 2 - (j % 3) * 4, 4, 4); }
       if (p > 0 && s % 4 === 0) sfx('glitch', 0.2, 1.6);
     });

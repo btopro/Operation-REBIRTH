@@ -1,3 +1,10 @@
+import {SoulUpgradeScene} from './scenes/SoulUpgradeScene.js';
+import {SoulEvolutionScene} from './scenes/SoulEvolutionScene.js';
+import {SoulRewardScene} from './scenes/SoulRewardScene.js';
+import {SoulBattleScene} from './scenes/SoulBattleScene.js';
+import {SoulTeamScene} from './scenes/SoulTeamScene.js';
+import {SoulBoardScene} from './scenes/SoulBoardScene.js';
+import {PHONE_DEVICE} from './performance.js';
 // Operation REBIRTH - entry point.
 import { VIEW_W, VIEW_H } from './config.js';
 import { BootScene } from './scenes/BootScene.js';
@@ -15,6 +22,7 @@ import { StageSelectScene } from './scenes/StageSelectScene.js';
 import { SelectScene } from './scenes/SelectScene.js';
 import { MatchScene } from './scenes/MatchScene.js';
 import { ResultsScene } from './scenes/ResultsScene.js';
+import { ChallengesScene } from './scenes/ChallengesScene.js';
 import { WinScene } from './scenes/WinScene.js';
 
 const config = {
@@ -24,9 +32,12 @@ const config = {
   height: VIEW_H,
   backgroundColor: '#0b0a14',
   pixelArt: true,
+  resolution:1,
+  fps:{target:60,limit:PHONE_DEVICE?60:0},
+  audio:{disableWebAudio:PHONE_DEVICE},
   roundPixels: true,
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-  scene: [BootScene, TitleScene, MenuScene, OptionsScene, OtherScene, TrinketsScene, AchievementsScene, FilesScene, TestFightersScene, ShopScene, SetupScene, StageSelectScene, SelectScene, MatchScene, WinScene, ResultsScene],
+  scene: [BootScene, TitleScene, MenuScene, OptionsScene, OtherScene, ChallengesScene, TrinketsScene, SoulBoardScene, SoulTeamScene, SoulBattleScene, SoulRewardScene, SoulEvolutionScene, SoulUpgradeScene, AchievementsScene, FilesScene, TestFightersScene, ShopScene, SetupScene, StageSelectScene, SelectScene, MatchScene, WinScene, ResultsScene],
 };
 
 // Wait (briefly) for the pixel font so text doesn't flash in a fallback font.

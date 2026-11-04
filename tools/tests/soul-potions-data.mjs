@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+const storage=new Map();globalThis.localStorage={getItem:k=>storage.get(k)||null,setItem:(k,v)=>storage.set(k,v)};
+const {potionInventory,useSoulPotion}=await import('../../src/souls/potions.js');
+const {awardSoul}=await import('../../src/souls/collection.js'),{soulPower,addSoulXP,evolveSoul}=await import('../../src/souls/progression.js');
+assert.deepEqual(potionInventory(),{small:200,medium:200,large:200});
+assert.equal(useSoulPotion('bendy','large'),null);awardSoul('healing-orb');assert.equal(useSoulPotion('healing-orb','large'),null);assert.equal(useSoulPotion('bendy','invalid'),null);assert.deepEqual(potionInventory(),{small:200,medium:200,large:200});
+awardSoul('bendy');assert.equal(useSoulPotion('bendy','small').gained,100);assert.equal(soulPower('bendy').level,2);assert.equal(useSoulPotion('bendy','medium').gained,500);assert.equal(soulPower('bendy').level,7);assert.equal(useSoulPotion('bendy','large').gained,1500);assert.equal(soulPower('bendy').level,22);assert.ok(evolveSoul('bendy'));assert.equal(useSoulPotion('bendy','large').gained,1500);assert.equal(soulPower('bendy').level,42);
+addSoulXP('bendy',99999);const counts=potionInventory();assert.equal(useSoulPotion('bendy','large'),null);assert.deepEqual(potionInventory(),counts);
+const reloaded=await import('../../src/souls/potions.js?reload');assert.deepEqual(reloaded.potionInventory(),counts);const persisted=JSON.parse(storage.get('rebirth.soulPotions'));persisted.small=0;storage.set('rebirth.soulPotions',JSON.stringify(persisted));awardSoul('steve');const empty=await import('../../src/souls/potions.js?empty');assert.equal(empty.useSoulPotion('steve','small'),null);assert.equal(empty.potionInventory().small,0);
+console.log('PASS three XP strengths, one-time 200-each gift, persisted use, Main-only owned gates, level/evolution growth, no spending at cap or empty inventory');

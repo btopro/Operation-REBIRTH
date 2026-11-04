@@ -16,14 +16,14 @@ export function touchEnabled() {
   return touchSeen || coarse;
 }
 
-const STICK_R = 34;                 // how far the thumb moves for full tilt
+const STICK_R = 40;                 // how far the thumb moves for full tilt
 const BUTTONS = [
-  { id: 'attack', label: 'ATK', x: 594, y: 258, r: 23, color: 0xff5a5a },
-  { id: 'special', label: 'SPC', x: 550, y: 290, r: 21, color: 0x4fa8ff },
-  { id: 'jump', label: 'JUMP', x: 548, y: 232, r: 21, color: 0x5ee07a },
-  { id: 'shield', label: 'SHLD', x: 604, y: 206, r: 17, color: 0xffd34f },
-  { id: 'grab', label: 'GRAB', x: 504, y: 268, r: 16, color: 0xc9c4dc },
-  { id: 'limit', label: 'LIMIT', x: 600, y: 156, r: 18, color: 0x78a0c6 },
+  { id: 'attack', label: 'ATK', x: 600, y: 260, r: 28, color: 0xff5a5a },
+  { id: 'special', label: 'SPC', x: 545, y: 304, r: 26, color: 0x4fa8ff },
+  { id: 'jump', label: 'JUMP', x: 536, y: 230, r: 26, color: 0x5ee07a },
+  { id: 'shield', label: 'SHLD', x: 603, y: 196, r: 22, color: 0xffd34f },
+  { id: 'grab', label: 'GRAB', x: 482, y: 278, r: 21, color: 0xc9c4dc },
+  { id: 'limit', label: 'LIMIT', x: 600, y: 135, r: 23, color: 0x78a0c6 },
 ];
 
 export class TouchPad {
@@ -33,7 +33,7 @@ export class TouchPad {
     this.held = {};
     scene.input.addPointer(3);      // up to 4 fingers at once
     this.g = scene.add.graphics().setDepth(40);
-    this.labels = BUTTONS.map((b) => scene.add.text(b.x, b.y, b.label, { fontFamily: FONT, fontSize: b.r > 19 ? '7px' : '6px', color: '#ffffff' }).setOrigin(0.5).setDepth(41).setAlpha(0.85));
+    this.labels = BUTTONS.map((b) => scene.add.text(b.x, b.y, b.label, { fontFamily: FONT, fontSize: b.r > 23 ? '8px' : '7px', color: '#ffffff' }).setOrigin(0.5).setDepth(41).setAlpha(0.85));
     scene.addUI(this.g, ...this.labels);
 
     this.onDown = (p, over) => {
@@ -76,7 +76,7 @@ export class TouchPad {
     const a = this.axes();
     g.fillStyle(0x0b0a14, s ? 0.35 : 0.2); g.fillCircle(ox, oy, STICK_R + 8);
     g.lineStyle(2, 0xffffff, s ? 0.5 : 0.25); g.strokeCircle(ox, oy, STICK_R + 8);
-    g.fillStyle(0xffffff, s ? 0.55 : 0.25); g.fillCircle(ox + a.x * STICK_R, oy + a.y * STICK_R, 15);
+    g.fillStyle(0xffffff, s ? 0.55 : 0.25); g.fillCircle(ox + a.x * STICK_R, oy + a.y * STICK_R, 18);
     // buttons
     const f = this.fighterRef();
     for (const [i, b] of BUTTONS.entries()) {

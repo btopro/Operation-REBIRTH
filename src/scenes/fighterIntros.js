@@ -16,6 +16,8 @@
 //   slash   two brush strokes cut across the spot and they're there                       (color)
 //   shapes for swarm/rise: wisp, bat, petal, note, pixel, star, leaf, ember, bubble, drop, coin, ring
 // `sfx`: [name, volume, rate] played on arrival; `pre`: one played as the intro starts.
+import { drawPremiumEntrance } from './premiumEntrances.js';
+import { syncAzureCape } from '../fighters/azureCape.js';
 import { sfx } from '../audio/sfx.js';
 import { skinInfo } from '../fighters/skins.js';
 
@@ -24,6 +26,7 @@ const TIME = { dur: 72, arrive: 0.62, first: 8, gap: 14 };
 
 // each fighter's own arrival
 export const INTROS = {
+  'young-link': {kind:'drop',color:0xa5e86b,trail:0xd9f6b6,sfx:['shing',.6,1.3]},
   'soul-summoner': { kind: 'rise', color: 'pal', shape: 'wisp', pre: ['summon', 0.5, 0.8], sfx: ['flame', 0.6, 1] },
   'mr-wake': { kind: 'portal', color: 0x1a3a5a, color2: 0x5aa0d8, pre: ['geyser', 0.4, 0.8], sfx: ['staff', 0.5, 0.9] },
   'hero-knight': { kind: 'drop', color: 0xd8e8ff, trail: 0xbff6ff, sfx: ['shing', 0.7, 1] },
@@ -35,6 +38,10 @@ export const INTROS = {
 
 // the special costumes' own arrivals ('fighter id:COSTUME NAME')
 export const SKIN_INTROS = {
+  'soul-summoner:JUDGMENT':{kind:'judgment-door',dur:100,color:0x77eaff,color2:0xf3f9ff,pre:['glass',.25,.8],sfx:['ding',.3,.7]},
+  'soul-summoner:ORRERY':{kind:'clockwork',dur:100,shape:'ring',color:0xd9bb74,color2:0x95ebcf,pre:['clocktick',.35,.8],sfx:['glass',.35,.8]},
+  'hero-knight:PRISM REGENT':{kind:'prism-shell',dur:100,shape:'star',color:0xa2eee7,color2:0xe4b5f5,pre:['glass',.3,.8],sfx:['glass',.4,1.2]},
+  'mr-wake:ABYSSAL CHOIR':{kind:'choir-tide',dur:100,shape:'bubble',color:0x123347,color2:0x8cebd4,pre:['glass',.25,.6],sfx:['ding',.35,.5]},
   // the nesting-doll costumes (code PAPERSPLEASE)
   'soul-summoner:TRICOLORE': { kind: 'swarm', shape: 'leaf', colors: [0x2a4ab8, 0xffffff, 0xe8303a], n: 24, pre: ['whoosh', 0.4, 0.8], sfx: ['shing', 0.5, 1.1] },
   'mr-wake:TEATIME': { kind: 'portal', color: 0x1a2a6a, color2: 0xd8203a, pre: ['glass', 0.4, 1.4], sfx: ['ding', 0.4, 1.6] },
@@ -56,7 +63,7 @@ export const SKIN_INTROS = {
   'mr-wake:NEON': { kind: 'warp', color: 0xff4fd8, sfx: ['laser', 0.4, 1.4] },
   'mr-wake:CREATURE FEATURE': { kind: 'bolt', color: 0xffffff, sfx: ['thunder', 0.6, 1] },
   'mr-wake:VAMPIRE': { kind: 'swarm', shape: 'bat', colors: [0x1a0a14, 0x5a0a1a, 0x2a1a2a], n: 20, pre: ['bats', 0.5, 1], sfx: ['curse', 0.4, 1.2] },
-  'mr-wake:PLAGUE DOCTOR': { kind: 'portal', color: 0x1a2a1e, color2: 0x5aff6a, sfx: ['curse', 0.4, 0.7] },
+  'mr-wake:PLAGUE DOCTOR': { kind: 'quarantine-lantern', color: 0x1a2a1e, color2: 0x5aff6a, sfx: ['curse', 0.4, 0.7] },
   'mr-wake:SAKURA': { kind: 'swarm', shape: 'petal', colors: [0xffb8d0, 0xffd8e8, 0xff8ab0], n: 26, sfx: ['petal', 0.6, 1.2] },
   'mr-wake:TIDEFATHER': { kind: 'portal', color: 0x0a2a4a, color2: 0x5ae8ff, sfx: ['geyser', 0.6, 0.7] },
   // Lacy
@@ -106,7 +113,7 @@ export class FighterIntros {
     });
   }
   // 0 before it starts, 0..1 through it, >1 when over
-  prog(e) { return (this.t - e.start) / TIME.dur; }
+  prog(e) { return (this.t - e.start) / (e.I.dur||TIME.dur); }
 
   step() {
     if (this.done) return;
@@ -148,6 +155,7 @@ export class FighterIntros {
     for (const o of objs) { if (o.setAlpha) o.setAlpha(o === f.tag ? Math.min(1, vis) : vis); }
     if (dy) for (const o of [f.sprite, f.headImg, f.scrImg, f.faceImg]) if (o) o.y += dy;
     if (sc !== 1) f.sprite.setScale(f.sprite.scaleX * sc, f.sprite.scaleY * sc);
+    if(f.azureCape)syncAzureCape(f.azureCape,f.sprite,this.t);
   }
 
   draw() {
@@ -157,7 +165,9 @@ export class FighterIntros {
       const p = this.prog(e), { f, I } = e, A = TIME.arrive, x = e.x, y = e.y, c = e.col, c2 = e.col2;
       const pre = Math.max(0, Math.min(1, p / A)), post = Math.max(0, (p - A) / (1 - A));   // before / after the arrival, 0..1
       let vis = p < A ? 0 : 1, dy = 0, sc = 1;
-      if (p > 0 && p <= 1.05) switch (I.kind) {
+      const premium=drawPremiumEntrance(g,e,p,this.t);
+      if(premium){vis=premium.vis;dy=premium.dy;sc=premium.sc;}
+      else if (p > 0 && p <= 1.05) switch (I.kind) {
         case 'rise': {                                                     // a pillar of colour, they come up out of it
           const hgt = 100 * Math.min(1, pre * 1.4) * (p > A ? Math.max(0, 1 - post * 1.4) : 1), w = 26 + 6 * Math.sin(this.t * 0.4);
           for (let i = 0; i < 4; i++) { g.fillStyle(i % 2 ? c2 : c, 0.18 + i * 0.12); g.fillRect(x - w / 2 + i * 3, y - hgt, w - i * 6, hgt); }
@@ -257,3 +267,4 @@ export class FighterIntros {
   }
   cleanup() { this.g.destroy(); }
 }
+

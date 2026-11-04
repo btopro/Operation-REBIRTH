@@ -64,11 +64,18 @@ export class CpuController extends Controller {
     if (this.wait > 0) { this.wait--; this.continuePlan(me, tgt, dx, dy); return; }
     this.wait = L.react + Math.floor(Math.random() * L.react);
 
+    // Soul puppets retain recovery/defence, then favor their soul's combat identity.
+    if(this.soulStyle&&me.state==='idle'){
+      if(this.soulStyle==='aerial'&&me.grounded&&adx<160&&Math.abs(dy)<80&&Math.random()<.65){this.x=Math.sign(dx);this.tap('jump');this.hopAttack=8;return;}
+      if(this.soulStyle==='builder'&&me.grounded&&adx>85&&this.match.pcsOf(me).length<1){this.y=1;this.tap('special');return;}
+      if(this.soulStyle==='caster'&&adx>90&&Math.abs(dy)<65){if(me.facing!==Math.sign(dx)){this.x=Math.sign(dx);return;}if(me.souls.length<2&&me.summonCooldown<=0&&Math.random()<.4){this.y=1;this.tap('special');return;}this.tap('special');this.holdSpecial=true;me.cpuChargeTarget=20+Math.floor(Math.random()*60);return;}
+      if(this.soulStyle==='sword'&&adx<75&&Math.abs(dy)<45&&Math.random()<.55){this.x=Math.sign(dx);this.tap('attack');return;}
+    }
     // AERO: with two computers out, his Limit is FULL AERO - go for it, ideally with someone close enough for the blast
-    if (me.limit >= LIMIT_MAX && me.def.altLimit && !(me.fullAero > 0) && this.match.pcsOf(me).length >= 2) { if (adx < 150 || Math.random() < 0.05) this.tap('limit'); return; }
-    if (me.limit >= LIMIT_MAX && me.def.altLimit && me.def.moves.downB.pc && this.match.pcsOf(me).length < 2 && me.grounded && Math.random() < 0.5) { this.y = 1; this.tap('special'); return; }   // set up for it first
+    if (!['builder','healer','aerial'].includes(this.soulStyle) && me.limit >= LIMIT_MAX && me.def.altLimit && !(me.fullAero > 0) && this.match.pcsOf(me).length >= 2) { if (adx < 150 || Math.random() < 0.05) this.tap('limit'); return; }
+    if (!['builder','healer','aerial'].includes(this.soulStyle) && me.limit >= LIMIT_MAX && me.def.altLimit && me.def.moves.downB.pc && this.match.pcsOf(me).length < 2 && me.grounded && Math.random() < 0.5) { this.y = 1; this.tap('special'); return; }   // set up for it first
     // Limit when an opponent is level with the beam
-    if (me.limit >= LIMIT_MAX && adx < (me.def.limit.reach || 360) && Math.abs(dy) < (me.def.limit.reach ? 70 : 40)) { this.tap('limit'); return; }
+    if (!['builder','healer','aerial'].includes(this.soulStyle) && me.limit >= LIMIT_MAX && (!me.def.limit.groundOnly || me.grounded) && adx < (me.def.limit.reach || 360) && Math.abs(dy) < (me.def.limit.reach ? 70 : 40)) { this.tap('limit'); return; }
 
     const M = me.def.moves;
     // Soul Summoner: summon souls from a distance
@@ -97,7 +104,7 @@ export class CpuController extends Controller {
       return;
     }
     // AERO: set computers down (two powers up FULL AERO); in FULL AERO, keep a CD storm going
-    if (M.downB && M.downB.pc && me.grounded && this.match.pcsOf(me).length < 2 && adx > 80 && Math.random() < 0.1 * L.aggression) { this.y = 1; this.tap('special'); return; }
+    if (!['healer','aerial'].includes(this.soulStyle) && M.downB && M.downB.pc && me.grounded && this.match.pcsOf(me).length < (this.soulStyle==='builder'?1:2) && adx > 80 && Math.random() < 0.1 * L.aggression) { this.y = 1; this.tap('special'); return; }
     if (M.downB && M.downB.cdcloud && !me.cdCloud && adx < 280 && Math.random() < 0.3) { this.y = 1; this.tap('special'); return; }
     // WHAT ONCE WAS transformed: its side special is a command grab (SMILE's teleports from far away)
     if (me.wowMode && !me.usedDive && Math.abs(dy) < 50 && adx < (me.wowMode === 'smile' ? 220 : me.wowMode === 'incoming' ? 120 : 76) && Math.random() < 0.3 * L.aggression) {
@@ -227,6 +234,11 @@ export class CpuController extends Controller {
         if (fall > 9) { this.x = away; return true; }                                                       // run
         if (fall > 5) { this.cur.shield = true; return true; }                                              // brace...
         if (fall >= -2) { this.cur.shield = true; this.x = me.state === 'shield' ? away : 0; return true; }  // ...and roll out under it
+        return false;
+      }
+      if (lim.type === 'spirits') {
+        const threat = this.match.projectiles.find(p => p.alive && !['settle','kneel','fade'].includes(p.phase) && p.owner === o && p.flightAge >= 12 && Math.hypot(p.x - me.x, p.y - (me.y - 25)) < 60);
+        if (threat && me.grounded) { this.cur.shield = true; return true; }
         return false;
       }
       // a beam at hand height: jump over it

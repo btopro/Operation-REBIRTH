@@ -1,5 +1,6 @@
 // Fighter methods: Shield, rolls, dodges, intangibility and hitstun.
 // Mixed into the Fighter class (Fighter.js) - `this` is the fighter.
+import {soulShieldDrainMultiplier} from '../souls/team.js';
 import { sfx } from '../audio/sfx.js';
 
 export class FighterDefense {
@@ -7,8 +8,9 @@ export class FighterDefense {
   // ---- defence
   st_shield(c) {
     if (this.shieldStun > 0) { this.shieldStun--; return; }
-    this.shieldHp -= 0.14;
+    this.shieldHp -= 0.14*soulShieldDrainMultiplier(this);
     if (this.shieldHp <= 0) { this.breakShield(); return; }
+    if (this.shieldHp <= 15) this.match.combatCue(this, 'low');
     if (!c.held('shield')) { this.setState('land'); this.landLag = 6; return; }
     if (this.buffer.jump) { this.buffer.jump = 0; this.setState('jumpsquat'); return; }
     if (this.buffer.grab || (this.buffer.attack && c.held('shield'))) { this.buffer.grab = this.buffer.attack = 0; this.startAttack('grab'); return; }
@@ -17,7 +19,7 @@ export class FighterDefense {
   }
   breakShield() {
     this.shieldHp = 30; this.setState('dizzy'); this.vy = -6; this.grounded = false;
-    sfx('bighit', 0.8, 1.3); this.match.popText(this, 'SHIELD BREAK!', '#ffd34f');
+    sfx('bighit', 0.8, 1.3); this.match.combatCue(this, 'break');
   }
   st_dizzy() { if (this.t > 150 && this.grounded) this.setState('idle'); }
   startRoll(dir) { this.setState('roll'); this.rollDir = dir; sfx('dodge', 0.5); }

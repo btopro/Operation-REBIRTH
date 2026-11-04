@@ -1,7 +1,39 @@
+import {drawNavi} from './navi.js';
 // Fighter methods: Costume effects drawn around the fighter: Samurai spin dragon, milestone auras, afterimage trails.
 // Mixed into the Fighter class (Fighter.js) - `this` is the fighter.
 
+import { drawSkinTheme } from './skinThemeFx.js';
+import { FAIRY_LINES,playFairyVoice } from '../audio/fairyVoice.js';
+import { FONT } from '../config.js';
+
 export class FighterCostumeFx {
+
+  stepCompanionFairy() {
+    if(!this.vfx?.aura?.fairy||this.match.demo||this.match.countdown>0||this.state==='respawn'){this.fairySpeech?.setVisible(false);return;}
+    if(this.fairySpeechLife>0)this.fairySpeechLife--;
+    this.fairyClock=(this.fairyClock||0)+1;
+    if(this.fairyClock<(this.fairyNextCall??90))return;
+    const line=FAIRY_LINES[(this.fairyLineIndex||0)%FAIRY_LINES.length];
+    this.fairyLineIndex=(this.fairyLineIndex||0)+1;this.fairyNextCall=this.fairyClock+660;
+    this.fairySpeechLife=65;this.fairyLastLine=line.key;
+    if(!this.fairySpeech){
+      this.fairySpeech=this.match.add.text(0,0,'',{fontFamily:FONT,fontSize:'8px',color:'#e5fcff',backgroundColor:'#142638',padding:{x:3,y:2}}).setOrigin(.5,1).setDepth(8);
+      this.match.addWorld(this.fairySpeech);
+    }
+    this.fairySpeech.setText(line.text).setVisible(true);
+    playFairyVoice(this.match,line.key);
+  }
+
+  // A cosmetic companion only: drawn into the fighter's existing world FX layer.
+  drawCompanionFairy(g) {
+    const targetX=this.x+this.facing*26+Math.sin(this.anim*.075)*5;
+    const targetY=this.y-(this.def.headTop||46)-12+Math.sin(this.anim*.13)*4;
+    let p=this.fairyPosition;
+    if(!p||Math.hypot(p.x-targetX,p.y-targetY)>160)p=this.fairyPosition={x:targetX,y:targetY};
+    p.x+=(targetX-p.x)*.13;p.y+=(targetY-p.y)*.17;
+    if(this.fairySpeech)this.fairySpeech.setPosition(Math.round(p.x),Math.round(p.y)-10).setVisible(this.fairySpeechLife>0).setAlpha(Math.min(1,this.fairySpeechLife/12));
+    drawNavi(g,p.x,p.y,this.anim);
+  }
 
   // SAMURAI costume's Cyclone Slash: a red-and-gold Eastern dragon chasing its tail around her.
   // The head leads at angle `head` on the ellipse (rx, ry) and the long body trails behind, rippling.
@@ -82,7 +114,47 @@ export class FighterCostumeFx {
     const a = this.vfx.aura;
     if (!a || this.state === 'respawn' && this.anim % 4 < 2) return;
     const d = this.def, back = this.fxBack, t = this.anim, f = this.facing, R = Math.random, P = this.match.particles;
+    if(a.fairy)this.drawCompanionFairy(g);
+    if(this.theme)drawSkinTheme(this,g);
     const cx = this.x, top = this.y - (d.headTop || d.body.h + 4), mid = this.y - d.body.h * 0.55;
+    const flourish=this.premiumAnimation,performance=flourish==='taunt'?Math.sin(this.premiumAnimProgress*Math.PI):flourish==='idle'?.12+.06*Math.sin(this.premiumAnimProgress*Math.PI*2):flourish?Math.sin(this.premiumAnimProgress*Math.PI)*.45:0;
+    if(a.prism){
+      const cols=[0xa2eee7,0xe4b5f5,0xd9e7ff];
+      for(let i=0;i<6;i++){
+        const angle=t*(.023+performance*.025)+i*Math.PI/3,xx=this.sprite.x+Math.cos(angle)*(27+performance*12),yy=this.sprite.y-29-performance*6+Math.sin(angle)*(13+performance*5),layer=Math.sin(angle)<0?back:g,c=cols[i%3];
+        layer.fillStyle(c,.85);layer.fillTriangle(xx,yy-5,xx+3,yy,xx,yy+5);layer.fillStyle(0xffffff,.8);layer.fillTriangle(xx,yy-5,xx-2,yy,xx,yy+5);
+      }
+      if(performance>0){back.fillStyle(0xc9f6ff,performance*.13);back.fillEllipse(this.sprite.x,this.sprite.y-28,48,68);}
+      if(['shield','counter','counterstrike'].includes(this.state))for(let i=0;i<3;i++){g.lineStyle(1,cols[i],.65);g.strokeEllipse(this.sprite.x+(i-1)*4,this.sprite.y-26,36+i*4,52);}
+      if(this.state==='attack'&&t%4===0)P.push({x:this.x-f*12,y:this.y-20,vx:-f*.6,vy:-.5,life:16,color:cols[(t>>2)%3],shape:'star',size:2,grav:0});
+    }
+    if(a.plagueRegalia){
+      const sx=this.sprite.x,sy=this.sprite.y;
+      // Low miasma never obscures the face or hitboxes; moths orbit through front/back layers.
+      for(let i=0;i<5;i++){const p=(t+i*23)%115/115,xx=sx+Math.sin(i*7+t*.018)*(13+p*16),yy=sy-3-p*21;back.fillStyle(i%2?0x81ae64:0x40644b,(1-p)*.12);back.fillEllipse(xx,yy,17+p*10,5+p*5);}
+      for(let i=0;i<4;i++){const a=t*.022+i*Math.PI/2,xx=sx+Math.cos(a)*27,yy=sy-32+Math.sin(a)*18,layer=Math.sin(a)<0?back:g,wing=(t+i*3)%10<5?3:1;layer.fillStyle(0xbce997,.85);layer.fillTriangle(xx,yy,xx-wing-1,yy-3,xx-wing,yy+2);layer.fillTriangle(xx,yy,xx+wing+1,yy-3,xx+wing,yy+2);layer.fillStyle(0xffe1a1);layer.fillRect(Math.round(xx),Math.round(yy)-1,1,3);}
+      if(this.state==='attack'&&t%5===0)P.push({x:sx-f*8,y:sy-23,vx:-f*.3,vy:-.5,life:22,color:0xa8d875,shape:'smoke',size:3,grav:0});
+    }
+    if(a.choir){
+      for(let i=0;i<3;i++){
+        const angle=t*(.015+performance*.014)+i*Math.PI*2/3,xx=this.sprite.x+Math.cos(angle)*(29+performance*8),yy=this.sprite.y-35+Math.sin(angle)*13-performance*5,layer=Math.sin(angle)<0?back:g;
+        layer.lineStyle(1,0xbcb58c,.65);layer.lineBetween(xx,yy-8,xx,yy-3);layer.fillStyle(0x224957);layer.fillTriangle(xx,yy-4,xx-5,yy+3,xx+5,yy+3);layer.lineStyle(1,0xbcdac0);layer.lineBetween(xx-5,yy+3,xx+5,yy+3);layer.fillStyle(0xd2ffde);layer.fillRect(xx-1,yy+4,2,2);
+        const pulse=(t+i*27)%(performance>.1?45:90)/(performance>.1?45:90);layer.lineStyle(1,0x8cebd4,(1-pulse)*.35);layer.strokeEllipse(xx,yy+4,8+pulse*22,3+pulse*8);
+      }
+      if(t%9===0)P.push({x:this.x+(R()-.5)*28,y:this.y-12,vx:0,vy:-.65,life:30,color:0x8cebd4,shape:'bubble',size:2,grav:0});
+    }
+    if(a.orrery){
+      const ox=this.sprite.x,oy=this.sprite.y-30;
+      for(let ring=0;ring<2;ring++){
+        back.lineStyle(1,ring?0x95ebcf:0xe0ba6d,.5);back.strokeEllipse(ox,oy,52+ring*10+performance*18,18+ring*14+performance*8);
+        for(let i=0;i<3;i++){
+          const ang=t*(ring?-.026-performance*.02:.018+performance*.02)+i*Math.PI*2/3,px=ox+Math.cos(ang)*(26+ring*5+performance*9),py=oy+Math.sin(ang)*(9+ring*7+performance*4),layer=Math.sin(ang)<0?back:g;
+          layer.fillStyle(0x283b40);layer.fillRect(Math.round(px)-3,Math.round(py)-3,7,7);
+          layer.lineStyle(1,0xe0ba6d);layer.strokeRect(Math.round(px)-3,Math.round(py)-3,7,7);
+          layer.lineStyle(1,0xffefb0);layer.lineBetween(px,py,px+Math.cos(t*.06+i)*2,py+Math.sin(t*.06+i)*2);
+        }
+      }
+    }
     if (a.wings) {                                   // feathered wings of light behind her back, slowly beating
       const sx = cx - f * 4, sy = this.y - d.body.h * 0.78, flap = Math.sin(t * 0.08);
       for (const far of [1, 0]) {                     // far wing first (dimmer, a little higher), then the near one
@@ -282,3 +354,4 @@ export class FighterCostumeFx {
     });
   }
 }
+

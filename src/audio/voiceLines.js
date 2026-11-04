@@ -1,3 +1,4 @@
+import {CHARACTER_SPEECH} from './speechPolicy.js';
 // Plays Mason's voice lines (the list is src/data/voiceLines.js). Follows the SOUND EFFECTS volume; silent in the
 // title demo. One fighter can't talk over themselves: a new line waits until GAP_MS after their last one.
 import { settings } from '../settings.js';
@@ -8,11 +9,13 @@ const GAP_MS = 1200;
 const last = {};
 
 export function loadVoiceLines(load) {
+  if(!CHARACTER_SPEECH)return;
   for (const v of VOICE_LINES) load.audio('vl_' + v.id, ['assets/audio/voice/custom/' + v.id + '.ogg', 'assets/audio/voice/custom/' + v.id + '.mp3']);
 }
 
 // say a line for this fighter and moment, if Mason made one. Returns true when a line played.
 export function voiceLine(scene, fighterId, event) {
+  if(!CHARACTER_SPEECH)return false;
   if (!VOICE_LINES.length || scene.demo || settings.sfxVolume <= 0) return false;
   const fits = VOICE_LINES.filter((v) => v.event === event && (v.fighter === fighterId || v.fighter === 'any') && scene.cache.audio.exists('vl_' + v.id));
   if (!fits.length) return false;

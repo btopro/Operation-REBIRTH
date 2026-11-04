@@ -1,6 +1,8 @@
 // Tiny 8-bit sound generator. Each effect is built once into an AudioBuffer from square waves and
 // stepped noise, then crushed to 8-bit, the same recipe as tools/audio/fireball_sfx.py.
 import { settings } from '../settings.js';
+import { GLADIATOR_STEP_DURATION, gladiatorStepSample } from './gladiatorStep.js';
+import { ORGAN_DURATION, phantomOrganSample } from './phantomOrgan.js';
 
 const SR = 22050;
 let ctx = null;
@@ -28,7 +30,11 @@ const sq = (phase, duty = 0.5) => ((phase % 1) < duty ? 1 : -1);
 export function initSfx(scene) {
   if (ctx) return;
   ctx = scene.sound.context || new (window.AudioContext || window.webkitAudioContext)();
+  build('phantomOrgan', ORGAN_DURATION, phantomOrganSample);
+  build('gladiatorStep', GLADIATOR_STEP_DURATION, gladiatorStepSample);
   const R = rand(7);
+  const tickNoise=rand(91);
+  build('clocktick',.085,t=>(tickNoise()*.8+Math.sin(t*Math.PI*4800)*.2)*Math.exp(-t*110));
   const noiseStep = (step) => { let v = 0, c = 0; return () => { if (c-- <= 0) { v = R(); c = step; } return v; }; };
 
   let ph = 0, n1 = noiseStep(3);
