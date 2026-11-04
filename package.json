@@ -16,6 +16,7 @@
     "check:budget": "node tools/check/budget.mjs",
     "test": "node tools/check/run-tests.mjs",
     "sim": "node tools/sim/sim.mjs",
+    "replay": "node tools/replay/replay.mjs",
     "images": "node tools/build/webp.mjs public",
     "test:priorities": "node tools/tests/priorities.mjs",
     "test:spirit-limit": "node tools/tests/spirit-limit.mjs",

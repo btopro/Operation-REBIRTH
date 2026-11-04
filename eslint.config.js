@@ -27,7 +27,7 @@ export default [
   { ignores: ['dist/**', 'node_modules/**', 'recordings/**', 'public/**', '**/*.min.js', 'tools/sprites/mr-wake-reference.js'] },
   {
     files: ['src/**/*.js'],
-    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.browser, Phaser: 'readonly' } },
+    languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: { ...globals.browser, Phaser: 'readonly', __GAME_COMMIT__: 'readonly' } },
     rules: bugRules,
   },
   {

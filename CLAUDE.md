@@ -107,7 +107,7 @@ Owner: Mason (artist; does the sprites and design). Live build: https://kobrabro
   the hatch (`tools/sprites/rosemary_tank.py` -> `last-seen/tank/` + `lsTankMoves.js`): MG jab, CANNON neutral-B (`TankShell` in entities.js,
   `spawnShell`), armoured down-B (`armor`, `armoured()`), KATYUSHA limit (`barrage`, rockets), `tankTick` (exhaust, dust, smoke); shouts in
   QUIPS 'last-seen:soviet'.
-- Every fighter has a taunt (`def.taunt`, 1 key / stick click); training hotkeys are 2–7.
+- Every fighter has a taunt (`def.taunt`, 1 key / stick click); training hotkeys are 2–7, plus 8 / 9 for debug recording.
 
 ## How to add things
 **A move / rebalance:** edit the `moves` object in the fighter's def. Hit format:
@@ -124,6 +124,11 @@ Headless all-CPU matches, ~0.3 s per minute of game time (`tools/sim/sim.mjs`). 
 - Locked shop things (costumes, STALINGRAD...) are left out of the smoke unless the save owns them (`rebirth.shop`).
 - Keep game logic on `Math.random()` (the sim seeds it) and frame counts, never `Date.now()` or real time.
 - The sim can't judge looks or feel: ask Mason to playtest anything visual.
+
+## Debug recordings (bug reports with a replay)
+- TRAINING → **8 RECORD FOR DEBUGGING** restarts the training match recording (or `?debug=1` records every match). While recording: **8** marks a bug (screenshot + an optional note), **9** saves `rebirth-recording-<date>.zip` (`recording.json` + `shots/`, a screenshot every 2 s for the last 3 minutes and one per mark; the README inside lists the marks). Code: `src/debug/recorder.js`.
+- **When someone hands you a recording zip**: read `README.txt` and `recording.json` (`marks`, `errors`, `fighters`, `setup`), look at the mark's screenshot, then `npm run replay -- file.zip` (add `--at f1,f2` to picture other frames, `--until N` to stop at mark N). It replays frame for frame and prints each fighter's state + a picture at every mark, so you can reproduce the bug, add logging, and re-run. If it says DIVERGED, check `game.commit` against `git log` (the game changed since) or look for real-time / timer use in match logic.
+- It replays because match logic uses only frame counts and `Math.random`, and during recording `Math.random` gives logic (create, every tick, training buttons) a seeded stream while drawing and Phaser's own effects get a separate one. Keep it that way: no `Date.now()` / timers in match logic (lint enforces it), and anything a recording must repeat that happens outside `tick()` has to be recorded as an event (see `TRAINING_ACTIONS`). `tools/tests/debug-recorder.mjs` records + replays a match and fails if this breaks.
 
 ## Working conventions
 - Keep fighter files data-only; behaviour goes in Fighter.js / entities.js.
