@@ -63,7 +63,7 @@ For a new Limit type, add a `<type>Limit()` method in a new `limit<Name>.js` and
 - [ ] `src/fighters/skins.js`: `SKINS['<id>']` costume list (at least a DEFAULT) and colour groups if recolourable
 - [ ] `src/data/lore.js`: `FILES['<id>']` dossier (no, alias, cls, weapon, origin, moves, limit, lore)
 - [ ] `src/progress.js`: add the id to the `?kos=` test list
-- [ ] voice line `public/assets/audio/voice/<id>.ogg/.mp3`: `python3 tools/audio/announcer.py <model> <voices> <id>` (Mason may record his own with `my_voice.py`)
+- [ ] voice line `public/assets/audio/voice/<id>.ogg` (+ an .mp3 the scripts also write - git ignores it, the build makes its own): `python3 tools/audio/announcer.py <model> <voices> <id>` (Mason may record his own with `my_voice.py`)
 - [ ] `src/ai/cpu.js`: check that the CPU uses the new specials sensibly (it reads `def.moves`)
 - [ ] `DESIGN.md` §9: add the fighter; `CLAUDE.md` fighters list
 

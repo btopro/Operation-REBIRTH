@@ -12,7 +12,7 @@ import { changedLines } from './changed.mjs';
 
 const MAX_SIDE = 4096;            // many phones can't use a texture wider or taller than this
 const BIG_IMAGE = 2e6;            // bytes: a PNG this big needs a reason (split it, or make it smaller)
-const MAX_AUDIO_KBPS = 160;       // OGG/MP3 above this are wasting download (tools/audio/*.py target 64-128)
+const MAX_AUDIO_KBPS = 160;       // an OGG above this are wasting download (tools/audio/*.py target 64-128)
 const MAX_SAMPLE_RATE = 48000;
 const BIG_VIDEO = 5e6;
 
@@ -68,10 +68,10 @@ for (const f of files) {
     if (Math.max(w, h) > MAX_SIDE) err(f, `${w}x${h} is over ${MAX_SIDE} px - many phones can't load it. Split the sheet (e.g. moves into two sheets) or put fewer frames per row.`);
     if (size > BIG_IMAGE) (all ? warn : err)(f, `${(size / 1e6).toFixed(1)} MB PNG. Ship art near the size it's shown at (e.g. 96 px portraits shouldn't come from 1254 px pictures), or split it.`);
   } else if (ext === '.wav') {
-    err(f, 'WAV is uncompressed - export OGG (and an MP3 copy), like the rest of public/assets/audio.');
-  } else if (ext === '.ogg' || ext === '.mp3') {
-    const partner = f.slice(0, -4) + (ext === '.ogg' ? '.mp3' : '.ogg');
-    if (!fs.existsSync(partner)) err(f, `has no ${path.extname(partner)} copy - every clip ships as both .ogg and .mp3 (Safari plays the MP3).`);
+    err(f, 'WAV is uncompressed - export OGG (ffmpeg -i x.wav -c:a libvorbis -q:a 4 x.ogg), like the rest of public/assets/audio.');
+  } else if (ext === '.mp3') {
+    err(f, 'audio goes in as .ogg only - the build makes the .mp3 copy for Safari (tools/build/mp3.mjs). Convert it: ffmpeg -i x.mp3 -c:a libvorbis -q:a 5 x.ogg, and delete the .mp3.');
+  } else if (ext === '.ogg') {
     const a = audioInfo(f);
     if (a && a.secs >= 2 && a.kbps > MAX_AUDIO_KBPS) (all ? warn : err)(f, `${a.kbps} kbps - re-encode at 64-128 kbps (128 for stereo music, 64 or less for mono voice/sfx).`);
     if (a && a.rate > MAX_SAMPLE_RATE) (all ? warn : err)(f, `${a.rate} Hz - 44100 or 48000 is plenty.`);
@@ -82,6 +82,15 @@ for (const f of files) {
     if (size > BIG_VIDEO) warn(f, `${(size / 1e6).toFixed(1)} MB video - keep clips short and small; load it only where it plays.`);
   }
 }
+// git ignores .mp3 in public/ (the build makes them), so an MP3 dropped in with no .ogg would silently never ship
+(function strayMp3(dir) {
+  if (!fs.existsSync(dir)) return;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) strayMp3(p);
+    else if (e.name.toLowerCase().endsWith('.mp3') && !fs.existsSync(p.slice(0, -4) + '.ogg')) err(p, 'has no .ogg - git ignores MP3s (the build makes them from the .ogg), so this clip would be missing from the game. Convert it: ffmpeg -i x.mp3 -c:a libvorbis -q:a 5 x.ogg');
+  }
+})('public');
 if (!hasFfprobe) warnings.push('(ffprobe not installed: audio bitrate and sample rate not checked)');
 
 for (const w of warnings) console.log('  warning  ' + w);
