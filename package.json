@@ -9,6 +9,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "sim": "node tools/sim/sim.mjs",
+    "images": "node tools/build/webp.mjs public",
     "test:priorities": "node tools/tests/priorities.mjs",
     "test:spirit-limit": "node tools/tests/spirit-limit.mjs",
     "test:master-sword": "node tools/tests/master-sword.mjs",
@@ -39,6 +40,7 @@
     "phaser": "4.2.1",
     "playwright-core": "^1.56.1",
     "pngjs": "^7.0.0",
+    "sharp": "^0.34.5",
     "terser": "^5.51.2",
     "vite": "^6.4.4"
   },
