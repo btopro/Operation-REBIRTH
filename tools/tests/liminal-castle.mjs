@@ -27,5 +27,5 @@ try{
   const f=m.fighters[0],c=f.ctrl;c.down=false;for(const [x,y] of [[-160,0],[180,-68],[-180,-104],[160,-164]]){f.placeAt(x,y-4);f.grounded=false;f.vy=6;f.ly=0;f.lx=0;f.x=x;f.y=y+1;f.platform=null;f.collide(x,y-4,c);if(!f.grounded||f.y!==y)throw Error('Landing failed at '+x+','+y);}
   f.placeAt(324,24);f.state='air';f.grounded=false;f.ledgeCooldown=0;f.possessed=0;f.vy=1;f.tryLedgeGrab({y:0});if(f.ledge?.p===stage.platforms[0])throw Error('Grabbed buried lower ledge');
   m.countdown=0;m.intros=null;m.bigText.setText('');m.fighters[0].placeAt(-168,0);m.fighters[1].placeAt(172,-68);m.draw();return {platforms:stage.platforms.length,hazardChecks:7200,stage:def.name};
- });await page.waitForTimeout(250);await page.screenshot({path:'/workspace/work/endless-castle.png'});assert.deepEqual(errors,[]);console.log('PASS selectable stage, four safe spawn points, fixed terrace geometry and no hazards even when enabled',result);
+ });await page.waitForTimeout(250);await page.screenshot({path:'recordings/test-output/endless-castle.png'});assert.deepEqual(errors,[]);console.log('PASS selectable stage, four safe spawn points, fixed terrace geometry and no hazards even when enabled',result);
 }finally{await browser.close();await server.close();}

@@ -1,6 +1,7 @@
 // Runs every test in tools/tests/ (*.mjs and *.js; Python asset checks in *.py too when python3 exists),
 // one at a time, and reports which passed. Browser tests use Chrome/Chromium: set SIM_CHROME to the
-// browser if it isn't found. A test passes when it exits with code 0.
+// browser if it isn't found. A test passes when it exits with code 0. Tests save their screenshots in
+// recordings/test-output/ (git-ignored; CI keeps them as a download for a week).
 //
 //   npm test                     every test
 //   npm test -- soul gravemoon   only tests whose file name contains one of the words
@@ -27,7 +28,7 @@ for (const f of tests) {
   const out = ((r.stdout || '') + (r.stderr || '')).trim().split('\n');
   let status = r.error && r.error.code === 'ETIMEDOUT' ? 'timeout' : r.status === 0 ? 'pass' : 'FAIL';
   if (KNOWN[f]) status = status === 'pass' ? 'FIXED' : 'known';
-  const tail = status === 'pass' ? '' : status === 'known' ? 'already failing (known-failing.json): ' + KNOWN[f] : status === 'FIXED' ? 'passes now - remove it from tools/tests/known-failing.json' : out.slice(-4).join('\n      ');
+  const tail = status === 'pass' ? '' : status === 'known' ? 'already failing (known-failing.json): ' + KNOWN[f] : status === 'FIXED' ? 'passes now - remove it from tools/tests/known-failing.json' : out.filter((l) => l.trim()).slice(-12).join('\n      ');
   results.push({ f, status, secs, tail });
   console.log(`${status.padEnd(7)} ${secs.padStart(4)}s  ${f}${tail ? '\n      ' + tail : ''}`);
 }
