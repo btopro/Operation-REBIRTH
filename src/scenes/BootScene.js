@@ -1,4 +1,4 @@
-import {makeOriginalSoulPortraits} from '../souls/portraits.js';
+import {makeOriginalSoulPortraits,SOUL_ATLASES} from '../souls/portraits.js';
 import {installMobileTextures} from '../mobileTextures.js';
 import {PREMIUM_ANIMS} from '../fighters/premiumAnimsData.js';
 import {CHARACTER_SPEECH,CHARACTER_NAME_CALLS,FIGHTER_ANNOUNCER_IDS} from '../audio/speechPolicy.js';
@@ -21,20 +21,11 @@ export class BootScene extends Phaser.Scene {
     installMobileTextures(this);
     for(const k of ['idle','walk','run','jump','fall'])this.load.spritesheet('fists_'+k,'assets/fighters/fists/'+k+'_sheet.png',{frameWidth:96,frameHeight:96});
     this.load.spritesheet('fists_moves','assets/fighters/fists/moves_sheet.png',{frameWidth:192,frameHeight:192});
-    for(const [key,file] of [['soul_medieval','medieval'],['soul_arcade_sky','arcade-sky'],['soul_misc','misc-souls']])this.load.image(key+'_source','assets/souls/'+file+'.png');
     for(const id of ['bill-cipher','shadow-young-link'])this.load.audio('soul_music_'+id,['assets/audio/soul-battles/'+id+'.ogg','assets/audio/soul-battles/'+id+'.mp3']);
+    // soul portraits: the pre-made 96 px sheets (npm run bake:souls); ?bakeSouls=1 loads the full pictures to make them
+    const bakeSouls=/[?&]bakeSouls=1\b/.test(location.search);if(bakeSouls)globalThis.__soulBake={};
+    for(const a of SOUL_ATLASES)bakeSouls?this.load.image(a.key+'_source','assets/souls/'+a.file):this.load.image(a.key+'_baked','assets/souls/baked/'+a.key+'.png');
     this.load.image('soul_shadow_young_link_source','assets/souls/shadow-young-link.png');
-    this.load.image('soul_redesign_source','assets/souls/ronin-finch-redesign.png');
-    this.load.image('soul_ink_demon_source','assets/souls/ink-demon.png');
-    this.load.image('soul_bendy_source','assets/souls/bendy.png');
-    this.load.image('soul_frost_fire_source','assets/souls/frost-fire.png');
-    this.load.image('soul_shadow_carnage_source','assets/souls/shadow-carnage.png');
-    this.load.image('soul_grimoire_source','assets/souls/mythic-grimoire.png');
-    this.load.image('soul_neo_japan_source','assets/souls/neo-japan.png');
-    this.load.image('soul_steampunk_source','assets/souls/steampunk.png');
-    this.load.image('soul_evolution_source','assets/souls/evolutions.png');
-    this.load.image('soul_new_aids_source','assets/souls/keepers.png');
-    this.load.image('soul_originals_source','assets/souls/originals.png');
     this.load.image('soul_healing_orb','assets/souls/healing-orb.png');
     this.load.spritesheet('soul_portraits','assets/souls/portraits.png',{frameWidth:724,frameHeight:724});
     // The HTML image is visible before Phaser and remains above its canvas during asset loading.
