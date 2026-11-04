@@ -34,6 +34,6 @@ try{
  const cdp=await page.context().newCDPSession(page),button=await page.evaluate(()=>{const r=window.game.canvas.getBoundingClientRect();return {x:r.x+r.width*594/640,y:r.y+r.height*258/360};});
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:button.x,y:button.y}]});await page.waitForTimeout(50);
  const touch=await page.evaluate(()=>{const m=window.game.scene.getScene('Match'),f=m.fighters[0];f.setState('idle');f.grounded=true;f.hitstop=0;f.ctrl.beginFrame();f.ctrl.poll();f.step();return {held:f.ctrl.held('attack'),move:f.moveName};});assert.ok(touch.held);assert.equal(touch.move,'jab');await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
- await page.waitForTimeout(80);await page.screenshot({path:'/workspace/work/mobile-match.png'});
+ await page.waitForTimeout(80);await page.screenshot({path:'recordings/test-output/mobile-match.png'});
  assert.deepEqual(errors,[]);assert.ok(phone.packed>=60);console.log('PASS',JSON.stringify(phone));
 }finally{await browser.close();await server.close();}

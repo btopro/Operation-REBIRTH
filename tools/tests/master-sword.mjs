@@ -47,8 +47,8 @@ try{
   const counterPose=f.animFrame('counter');const counterUsesOwnStrip=counterPose.sheet===f.sheets.counter&&counterPose.frame===1&&f.counterReady();
   return{fixedArmLengths,noTrailingArm,twoHandedGuard,helmetProtected,fairySilent,counterUsesOwnStrip,gripNearHands,limitAtHands,strips,patchesCorrect,bodyAlphaPreserved,normalUntouched:normalSwordKey==='hk_idle'&&!skinInfo('hero-knight',0).masterSword,unarmedUntouched,thrownMatches,fairyStillPresent:!!f.fairyPosition};
  });
- await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));mkdirSync('/workspace/work/master-sword',{recursive:true});await page.screenshot({path:'/workspace/work/master-sword/in-game.png'});
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));mkdirSync('recordings/test-output/master-sword',{recursive:true});await page.screenshot({path:'recordings/test-output/master-sword/in-game.png'});
  await page.evaluate(()=>{const m=window.game.scene.getScene('Match'),f=m.fighters[0];f.setState('idle');f.hurtAnim=0;m.draw();});
- await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:'/workspace/work/master-sword/idle.png'});
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:'recordings/test-output/master-sword/idle.png'});
  assert.equal(facts.strips,15);for(const [k,v]of Object.entries(facts))if(k!=='strips')assert.equal(v,true,k);assert.deepEqual(errors,[]);console.log('PASS',JSON.stringify(facts));
 }finally{await browser.close();await server.close();}

@@ -25,7 +25,7 @@ try{
   s.openPicker(1);if(s.choices.length!==1)throw Error('Aid picker must use earned souls');s.equip();if(s.picker)throw Error('Picker did not close');
   const {MatchScene}=await import('/src/scenes/MatchScene.js');MatchScene.prototype.update=function(){};return {layout:true,presets:true,power:s.power.text};
  });
- await page.waitForTimeout(120);await page.screenshot({path:'/workspace/work/soul-party.png'});
+ await page.waitForTimeout(120);await page.screenshot({path:'recordings/test-output/soul-party.png'});
  const button=await page.evaluate(()=>{const s=window.game.scene.getScene('SoulTeam'),b=s.fightButton.getBounds(),r=window.game.canvas.getBoundingClientRect();return {x:r.x+b.centerX/640*r.width,y:r.y+b.centerY/360*r.height};});await page.touchscreen.tap(button.x,button.y);await page.waitForFunction(()=>window.game.scene.isActive('Match'));
  const combat=await page.evaluate(async()=>{
   const m=window.game.scene.getScene('Match'),f=m.fighters[0],enemy=m.fighters[1];if(f.def.id!=='young-link'||f.skin!==1||m.soulBattle.soulId!=='steve')throw Error('Party Fight lost encounter/fighter');

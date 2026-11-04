@@ -14,7 +14,7 @@ try{
   MatchScene.prototype.update=function(){};window.renderWin=WinScene.prototype.update;WinScene.prototype.update=function(){};
   return SKIN_UPGRADES.map(u=>({...u,index:skinsFor(u.fighter).findIndex(s=>s.name===u.name)}));
  });
- mkdirSync('/workspace/work/five-skins',{recursive:true});
+ mkdirSync('recordings/test-output/five-skins',{recursive:true});
  const results=[];
  for(const pack of packs){
   const facts=await page.evaluate(async(pack)=>{
@@ -30,7 +30,7 @@ try{
    return {capeMirrors,cape:pack.key!=='azure'||!!(f.azureCape?.visible&&f.azureCape.frame.width===64&&f.azureCape.frame.height===64),impacts,theme:f.theme,draws:f.fx.commandBuffer.length>0,projectileUnchanged:p?before===JSON.stringify(p.hitbox().h):true,captionFairy:pack.key!=='hylian'||!!f.fairyPosition};
   },pack);
   assert.equal(facts.theme,pack.key);assert.ok(facts.draws);assert.ok(facts.impacts);assert.ok(facts.cape);assert.ok(facts.capeMirrors);assert.ok(facts.projectileUnchanged);assert.ok(facts.captionFairy);
-  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:'/workspace/work/five-skins/'+pack.key+'-match.png'});
+  await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:'recordings/test-output/five-skins/'+pack.key+'-match.png'});
   const shots=await page.evaluate(async(pack)=>{
    window.game.scene.stop('Match');window.game.scene.start('Win',{preview:true,results:[{fighter:pack.fighter,skin:pack.index,slot:0,name:'P1'},{fighter:'hero-knight',skin:0,slot:1,name:'CPU'}]});await new Promise(r=>setTimeout(r,200));const w=window.game.scene.getScene('Win');
    return {fn:w.cut.fn,shots:w.cut.shots.map(([from,name],i)=>({name,t:Math.floor((from+(w.cut.shots[i+1]?.[0]||w.cut.len))/2)}))};
@@ -40,7 +40,7 @@ try{
   for(const shot of shots.shots){
    const geometry=await page.evaluate(shot=>{const w=window.game.scene.getScene('Win');w.t=shot.t-1;window.renderWin.call(w);return {cape:w.cineAzureCape?.visible,plannedHidden:w.cineFrame?.actorHidden,camera:w.cineFrame,action:w.cineAction,visible:w.hero.visible,x:w.hero.x,y:w.hero.y,scale:w.hero.scaleX,finite:Number.isFinite(w.hero.x+w.hero.y+w.hero.scaleX),texture:w.hero.texture.key};},shot);
    assert.ok((geometry.visible||geometry.plannedHidden)&&geometry.finite);assert.ok(geometry.camera?.shot);if(pack.key==='azure')assert.equal(!!geometry.cape,geometry.visible);assert.ok(geometry.scale>=3&&geometry.scale<=4);assert.ok(!geometry.texture.includes('__MISSING'));
-   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:'/workspace/work/five-skins/'+pack.key+'-'+shot.name+'.png'});
+   await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));await page.screenshot({path:'recordings/test-output/five-skins/'+pack.key+'-'+shot.name+'.png'});
   }
   const stable=await page.evaluate(()=>{const w=window.game.scene.getScene('Win'),views=new Set(),zooms=new Set();let contact=false,embedded=false,released=false,turnUp=false,turnDown=false,beam=false,frozen=false,frostGrowth=false,planetGreen=false,planetBlue=false,orb=false,exploded=false,nearPlanet=false,farPlanet=false,resting=null;for(let t=1;t<w.cut.len;t+=3){w.t=t-1;window.renderWin.call(w);if(!Number.isFinite(w.hero.x+w.hero.y+w.hero.scaleX+w.cineWorld.x+w.cineWorld.y))return {ok:false};views.add(w.cineFrame.shot);zooms.add(w.cineFrame.zoom.toFixed(2));const a=w.cineAction;if(a?.beam)beam=true;if(a?.freeze===1)frozen=true;if(a?.screenFrost>.5)frostGrowth=true;if(a?.phase==='orb-held')orb=true;if(a?.phase==='orb-explosion')exploded=true;if(a?.phase==='orbit-pullback'){nearPlanet ||= a.planetRadius>350;farPlanet ||= a.planetRadius<130;}if(a?.phase==='planet'){planetGreen ||= a.green>0&&a.flood===0;planetBlue ||= a.green===0&&a.flood===1;}if(a?.phase==='grip'){turnUp ||= a.tip[1]<100;turnDown ||= a.tip[1]>200;}if(a?.phase==='insert'){if(w.hero2.visible)return {ok:false};if(a.tip[1]<a.stoneTop)contact=true;if(a.tip[1]>a.stoneTop+12)embedded=true;}if(a?.phase==='release'&&(!w.cineHands.visible||w.cineWorld.getIndex(w.cineHands)<=w.cineWorld.getIndex(w.hero2)))return {ok:false};if(a?.handsReleased)released=true;if(a?.swordPosition){const p=JSON.stringify(a.swordPosition);if(resting&&resting!==p)return {ok:false};resting=p;}}return {ok:true,views:views.size,zooms:zooms.size,contact,embedded,released,turnUp,turnDown,beam,frozen,frostGrowth,planetGreen,planetBlue,orb,exploded,nearPlanet,farPlanet};});assert.ok(stable.ok);assert.ok(stable.views>=5);assert.ok(stable.zooms>=3);if(pack.key==='frost'){assert.ok(stable.beam&&stable.frozen&&stable.frostGrowth);}if(pack.key==='azure'){assert.ok(stable.orb&&stable.exploded&&stable.nearPlanet&&stable.farPlanet&&stable.planetGreen&&stable.planetBlue);}if(pack.key==='hylian'){assert.ok(stable.turnUp&&stable.turnDown);assert.ok(stable.contact);assert.ok(stable.embedded);assert.ok(stable.released);}
   results.push({name:pack.name,match:true,shots:shots.shots.length,fullTimeline:stable.ok,cameraShots:stable.views});

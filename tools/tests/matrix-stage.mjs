@@ -24,6 +24,6 @@ try{
  return {layouts:seen.size,hits,warnings,stageCount:STAGES.length};
  });
  assert.equal(result.layouts,3);assert.ok(result.hits>0&&result.warnings>0);
- await page.screenshot({path:'/workspace/work/construct-stage.png'});
+ await page.screenshot({path:'recordings/test-output/construct-stage.png'});
  assert.deepEqual(errors,[]);console.log('PASS',JSON.stringify(result));
 }finally{await browser.close();await server.close();}
