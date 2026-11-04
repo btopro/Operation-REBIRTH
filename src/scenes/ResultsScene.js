@@ -2,7 +2,7 @@ import { playMusic } from '../audio/music.js';
 import { VIEW_W, VIEW_H, FONT, PLAYER_CSS, PLAYER_COLORS, PLAYER_TINTS } from '../config.js';
 import { MODE_NAMES, settings } from '../settings.js';
 import { MenuInput } from './menuInput.js';
-import { ROSTER, showFighter } from '../fighters/roster.js';
+import { ROSTER, fighterById, showFighter } from '../fighters/roster.js';
 import { voiceLine } from '../audio/voiceLines.js';
 import { checkAchievements } from '../achievements.js';
 import { achievementToasts } from '../ui/toast.js';
@@ -10,13 +10,14 @@ import { sfx } from '../audio/sfx.js';
 import { addFullscreenButton } from '../ui/fullscreen.js';
 import { skinsFor } from '../fighters/skins.js';
 import { getKOs, MILESTONE_KOS } from '../progress.js';
+import { makeButton } from '../ui/button.js';
 import { announce } from '../audio/announcer.js';
 import { ArcadeBg, panel, slant, hintBar, ARC, shade } from '../ui/arcade.js';
 
 export class ResultsScene extends Phaser.Scene {
   constructor() { super('Results'); }
   create(data) {
-    this.menu = new MenuInput(this); this.t = 0;
+    this.soulBattle=data.soulBattle;this.menu = new MenuInput(this); this.t = 0; this.leaving = false; this.rematch = data.rematch; this.choice = this.rematch ? 0 : 1;
     playMusic(this, 'bgm_title');
     const win = data.results[0], wc = PLAYER_COLORS[win.slot];
     this.bgFx = new ArcadeBg(this, wc, { second: ARC.gold });
@@ -30,7 +31,7 @@ export class ResultsScene extends Phaser.Scene {
     this.add.text(20, 10, MODE_NAMES[data.mode] + '  -  RESULTS', { fontFamily: FONT, fontSize: '7px', color: '#07060e' });
     this.winT = this.add.text(VIEW_W / 2 + 60, 74, win.label + ' WINS!', { fontFamily: FONT, fontSize: '26px', color: '#ffffff', stroke: '#07060e', strokeThickness: 7, shadow: { offsetX: 4, offsetY: 4, color: '#07060e', fill: true, stroke: true } }).setOrigin(0.5).setScale(2.4).setAlpha(0);
     this.tweens.add({ targets: this.winT, scale: 1, alpha: 1, duration: 320, ease: 'Back.Out' });
-    this.heroDef = (ROSTER.find((r) => r.id === win.fighter) || ROSTER[0]).def;
+    this.heroDef = fighterById(win.fighter).def;
     this.time.delayedCall(900, () => voiceLine(this, win.fighter, 'win'));   // Mason's win line, if he made one
     this.hero = showFighter(this.add.sprite(120, 112, this.heroDef.sheets.idle, 0), this.heroDef, 0, win.skin || 0).setScale(1.6).setTint(PLAYER_TINTS[win.slot]);
     const unit = data.mode === 'stamina' ? ' HP' : '%';
@@ -46,7 +47,8 @@ export class ResultsScene extends Phaser.Scene {
       const cols = [['#' + (i + 1), 62], [r.label, 116], [String(r.kos), 254], [String(r.falls), 310], [r.dealt + unit, 386], [r.taken + unit, 486]];
       for (const [txt, x] of cols) this.add.text(x, y, txt, { fontFamily: FONT, fontSize: '8px', color: x === 62 ? '#07060e' : x === 116 ? PLAYER_CSS[r.slot] : '#ffffff', stroke: x === 62 ? undefined : '#07060e', strokeThickness: x === 62 ? 0 : 3 });
     });
-    this.milestones(data, g);
+    if(this.soulBattle){this.unlocks=[];this.add.text(60,268,data.soulWon?(data.soulEarned?'SOUL EARNED!  EQUIP IN TEAM SELECT.':'REPLAY COMPLETE! COINS + MAIN SOUL XP.'):'DEFEATED. TRY AGAIN FOR MORE REWARDS.',{fontFamily:FONT,fontSize:'8px',color:'#ffdb92'});}else this.milestones(data, g);
+    if(data.soulXP&&!this.unlocks.length){const p=data.soulXP.after;this.add.text(60,292,'MAIN SOUL +'+data.soulXP.gained+' XP / LV '+p.level+' / POWER '+p.power,{fontFamily:FONT,fontSize:'6px',color:'#7ddfff'});}
     // the coins each human earned (for the shop: Trinkets > SHOP)
     if (data.coins && data.coins.length) {
       const txt = data.coins.map((c) => c.label + ' +' + c.coins).join('   ') + '   COINS  (' + data.total + ' IN THE BANK)';
@@ -55,11 +57,23 @@ export class ResultsScene extends Phaser.Scene {
       this.time.delayedCall(400, () => sfx('ding', 0.4, 1.6));
     }
     achievementToasts(this, checkAchievements(), { delay: 900 });   // anything this match unlocked (achievements.js)
-    this.prompt = this.add.text(VIEW_W / 2, 337, 'CLICK / ENTER / A  CONTINUE', { fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#07060e', strokeThickness: 3 }).setOrigin(0.5);
+    this.actions = [
+      makeButton(this, 226, 334, 'REMATCH', () => this.choose(0), { originX: 0.5, size: '7px' }).setVisible(!!this.rematch),
+      makeButton(this, 428, 334, this.soulBattle?'SOUL BOARD':'CHANGE FIGHTERS / RULES', () => this.choose(1), { originX: 0.5, size: '7px' }),
+    ];
     sfx('limitready', 0.8);
-    this.clicked = false;
-    this.input.on('pointerdown', (p, over) => { if (!over.length) this.clicked = true; });
+    this.add.text(VIEW_W / 2, 355, 'LEFT/RIGHT CHOOSE   ENTER / A CONFIRM   ESC / B BACK', { fontFamily: FONT, fontSize: '5px', color: '#a8a4c0' }).setOrigin(0.5, 0);
     addFullscreenButton(this, VIEW_W - 8, 6);
+  }
+  choose(choice) {
+    if (this.t <= 40 || this.leaving) return;
+    this.leaving = true; sfx('select', 0.8);
+    if(this.soulBattle)return this.scene.start(choice===0?'Match':'SoulBoard',choice===0?{soulBattle:this.soulBattle}:{});
+    if (choice === 0 && this.rematch) {
+      Object.assign(settings, this.rematch);
+      return this.scene.start('Match');
+    }
+    this.scene.start(settings.from || 'Setup');
   }
   // Milestone costumes: a banner for each costume unlocked this match, otherwise each human's progress.
   milestones(data, g) {
@@ -103,9 +117,10 @@ export class ResultsScene extends Phaser.Scene {
       if (this.unlocks.length > 1 && this.t % 180 === 0) this.showUnlock(this.ui + 1);
     }
     this.hero.setFrame(Math.floor(this.t / 6) % ((this.heroDef.frameCounts && this.heroDef.frameCounts.idle) || 32));
-    this.prompt.setVisible(this.t % 60 < 40);
-    if (this.t <= 40) this.clicked = false;
+    this.actions.forEach((a, i) => a.setColor(i === this.choice ? '#ffd34f' : '#ffffff'));
     const m = this.menu.poll();
-    if (this.t > 40 && (m.ok || this.clicked || m.pads.some((p) => p.button === 'a' || p.button === 'start'))) { sfx('select', 0.8); this.scene.start(settings.from || 'Setup'); }   // back to wherever the match was started from
+    if (m.left && this.rematch) this.choice = 0; if (m.right) this.choice = 1;
+    if (m.back || m.pads.some((p) => p.button === 'b')) this.choose(1);
+    if (this.t > 40 && (m.ok || m.pads.some((p) => p.button === 'a' || p.button === 'start'))) this.choose(this.choice);
   }
 }

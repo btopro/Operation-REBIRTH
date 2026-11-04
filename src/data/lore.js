@@ -3,7 +3,7 @@
 export const FILES = {
   'soul-summoner': {
     no: '001', alias: 'THE BLUE-FLAME KNIGHT', cls: 'NECROMANCER KNIGHT', weapon: 'SOULFIRE, HELD IN HIS PALM',
-    origin: 'THE SKY SANCTUM', moves: 'FIREBALL - SOUL HEX - SUMMON SOUL - SOULFIRE JET', limit: 'SOULFIRE BEAM',
+    origin: 'THE SKY SANCTUM', moves: 'FIREBALL - SOUL HEX - SUMMON SOUL - SOULFIRE JET', limit: 'MARCH OF THE FALLEN',
     lore: 'Once a royal guard of the Sky Sanctum, he died holding its gates - and refused to stay dead. He clawed his way back in the armour he fell in, the gold crown still on his helm and a cold blue fire burning in his palm: the souls of every warrior who fell beside him. He fights to give them one last battle worth remembering. When he summons a soul, he is calling a friend by name.',
   },
   'mr-wake': {

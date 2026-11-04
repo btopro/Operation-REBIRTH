@@ -1,8 +1,10 @@
+import {YoungLinkBomb,youngLinkHook,YoungLinkActions} from './youngLinkSpecials.js';
 // A fighter: its own fixed-step physics, a state machine, attacks and rendering.
 // Position (x, y) is the point between the fighter's feet; y grows downward.
 // Most behaviour lives in the fighter*.js files next to this one (see the mix-in list at the bottom).
 import { PHYS, BLAST, LIMIT_MAX, PLAYER_COLORS, PLAYER_TINTS, FONT } from '../config.js';
 import { sfx } from '../audio/sfx.js';
+import {soulShieldRegenMultiplier,soulJumpMultiplier} from '../souls/team.js';
 import { Controller } from '../input/controllers.js';
 import { skinSheets, skinInfo, paletteFor } from './skins.js';
 import { newAttackId } from './attackIds.js';
@@ -64,15 +66,17 @@ export class Fighter {
     this.fxBack = s.add.graphics();                 // effects drawn behind the fighter (e.g. the far side of the Samurai dragon)
     this.vfx = skinInfo(def.id, this.skin).vfx || null;   // milestone costume effects (skins.js)
     this.pal = paletteFor(def, this.skin) || def.pal;       // ability colours, matched to the costume
+    this.theme = skinInfo(def.id,this.skin).theme || null;
     this.style = skinInfo(def.id, this.skin).style || null; // costumes that reshape abilities: 'onebit', 'rose', 'samurai'
     this.ghosts = this.vfx && this.vfx.trail ? [0, 1, 2].map(() => s.add.sprite(0, 0, this.sheets.idle, 0).setVisible(false)) : [];
     this.trailHist = [];
+    this.azureCape=this.theme==='azure'?s.add.sprite(0,0,'azure_water_cape',0).setVisible(false):null;
     this.sprite = s.add.sprite(0, 0, this.sheets.idle, 0).setOrigin(def.originX ?? 0.5, def.originY);
     this.sprite.setTint(PLAYER_TINTS[slot]);
     this.fx = s.add.graphics();
     this.tag = s.add.text(0, 0, this.label, { fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5, 1);
     this.tag.setColor('#' + this.color.toString(16).padStart(6, '0'));
-    match.addWorld(...this.ghosts, this.fxBack, this.sprite, this.fx, this.tag);
+    match.addWorld(...this.ghosts, this.fxBack, ...(this.azureCape?[this.azureCape]:[]), this.sprite, this.fx, this.tag);
   }
 
   // ------------------------------------------------------------------ helpers
@@ -100,11 +104,11 @@ export class Fighter {
   setState(s) { this.state = s; this.t = 0; }
   actionable() { return ['idle', 'run', 'air', 'land', 'shield'].includes(this.state) || (this.state === 'land' && this.t >= 2); }
   get cursedMult() { return this.curse > 0 ? 0.7 : 1; }
-  get dmgMult() { return this.cursedMult * (this.rage > 0 ? 1.2 : 1) * AERO_BOOST.dmg[this.aeroLevel] * this.modeDmg * (this.shaken > 0 ? 0.7 : 1) * (this.frenzy > 0 ? 1.3 : 1) * (this.axeLost > 0 ? 0.65 : 1); }   // ...and without its axe, 35% softer   // SEEN's SCREAM: SHAKEN hits 30% softer, its FRENZY 30% harder   // NU's RAGE MODE hits 20% harder; WHAT ONCE WAS in SEE mode 20%
+  get dmgMult() { return (this.soulPowerDamage||1) * (this.soulBattleDamage||1) * this.cursedMult * (this.rage > 0 ? 1.2 : 1) * AERO_BOOST.dmg[this.aeroLevel] * this.modeDmg * (this.shaken > 0 ? 0.7 : 1) * (this.frenzy > 0 ? 1.3 : 1) * (this.axeLost > 0 ? 0.65 : 1); }   // ...and without its axe, 35% softer   // SEEN's SCREAM: SHAKEN hits 30% softer, its FRENZY 30% harder   // NU's RAGE MODE hits 20% harder; WHAT ONCE WAS in SEE mode 20%
   get speedMult() { return (this.curse > 0 ? 0.6 : 1) * (this.slow > 0 ? 0.5 : 1) * (this.swift > 0 ? 1.3 : 1) * AERO_BOOST.speed[this.aeroLevel] * this.modeSpeed * (this.shaken > 0 ? 0.6 : 1) * (this.frenzy > 0 ? 1.15 : 1); }   // WHAT ONCE WAS in INCOMING mode: 20% faster
-  get jumpMult() { return AERO_BOOST.jump[this.aeroLevel]; }
+  get jumpMult() { return AERO_BOOST.jump[this.aeroLevel]*soulJumpMultiplier(this); }
   get kbTakenMult() { return AERO_BOOST.kb[this.aeroLevel]; }
-  get dmgTakenMult() { return AERO_BOOST.taken[this.aeroLevel] * (this.missingMark > 0 ? 1.2 : 1) * (this.def.takenMult || 1) * (this.state === 'attack' && this.move && this.move.scream ? this.move.scream.taken : 1) * (this.armoured() ? this.move.armor.taken : 1); }   // (THE TANK dug in: less gets through)   // mid-SCREAM: wide open   // posted MISSING: takes 20% more
+  get dmgTakenMult() { return (this.soulPowerTaken||1) * (this.soulBattleTaken||1) * AERO_BOOST.taken[this.aeroLevel] * (this.missingMark > 0 ? 1.2 : 1) * (this.def.takenMult || 1) * (this.state === 'attack' && this.move && this.move.scream ? this.move.scream.taken : 1) * (this.armoured() ? this.move.armor.taken : 1); }   // (THE TANK dug in: less gets through)   // mid-SCREAM: wide open   // posted MISSING: takes 20% more
   // AERO powered up: 1 = standing near one of his computers, 2 = FULL AERO. Every stat goes up.
   get aeroLevel() { return this.fullAero > 0 ? 2 : this.pcBuff > 0 ? 1 : 0; }
   get fxColor() { return skinInfo(this.def.id, this.skin).fx ?? this.def.fxColor ?? 0x78a0c6; }
@@ -121,6 +125,7 @@ export class Fighter {
   step() {
     let c = this.ctrl;
     if (!this.alive) {
+      this.fairySpeech?.setVisible(false);
       if (!this.eliminated && --this.respawnTimer <= 0) this.respawn();
       return;
     }
@@ -142,6 +147,7 @@ export class Fighter {
       this.buffer.attack = this.buffer.grab = this.buffer.limit = 0;
     }
     this.age++;
+    this.stepCompanionFairy();
     if (c.tappedSide()) this.tapX = this.age;
     if (c.y < -0.5 && c.py >= -0.5) this.tapUp = this.age;
     if (c.tappedDown()) this.tapDown = this.age;
@@ -168,8 +174,8 @@ export class Fighter {
     if (this.star > 0) this.star--;
     if (this.summonCooldown > 0) this.summonCooldown--;
     if (this.lastHitTimer > 0 && --this.lastHitTimer === 0) this.lastHitBy = null;
-    if (this.state !== 'shield' && this.shieldHp < 60) this.shieldHp = Math.min(60, this.shieldHp + 0.12);
-    if (this.limit >= LIMIT_MAX && !this.limitReadyShown) { this.limitReadyShown = true; sfx('limitready', 0.8); this.match.popText(this, 'LIMIT READY!', '#78a0c6'); }
+    if (this.state !== 'shield' && this.shieldHp < 60) this.shieldHp = Math.min(60, this.shieldHp + 0.12*soulShieldRegenMultiplier(this));
+    if (this.limit >= LIMIT_MAX && !this.limitReadyShown) { this.limitReadyShown = true; this.match.combatCue(this, 'ready'); }
 
     if (this.def.id === 'last-seen') this.lastSeenTick();   // LAST SEEN: turning into SEEN when SIGHTINGS is full
     const handler = this['st_' + this.state];
@@ -245,7 +251,7 @@ export class Fighter {
   // Attacks, specials, grab and Limit, shared by ground and air.
   tryCommon(c, ground) {
     if (this.headless) return false;                  // WHAT ONCE WAS as a lone TV: it can only steer
-    if (this.buffer.limit && this.limit >= LIMIT_MAX) { this.buffer.limit = 0; this.startLimit(); return true; }
+    if (this.buffer.limit && this.limit >= LIMIT_MAX) { this.buffer.limit = 0; if (this.startLimit() !== false) return true; }
     if (this.buffer.special) {
       const M = this.def.moves;
       this.buffer.special = 0;
@@ -314,6 +320,7 @@ export class Fighter {
   }
 
   startAttack(name) {
+    if(this.def.id==='young-link'&&name==='sideB'){this.startYoungLinkRush();return;}
     this.quip(name === 'jab' ? 'jab' : /smash/.test(name) ? 'smash' : name === 'grab' ? null : 'attack');
     this.move = this.def.moves[name]; this.moveName = name; this.attackId = newAttackId();
     this.setState('attack'); this.hitList = new Set(); this.rapidLoops = 0; this.chord = 0;
@@ -346,6 +353,8 @@ export class Fighter {
     if (m.rapid && this.t === m.rapid.at && this.rapidLoops < m.rapid.max && c.held('attack')) {   // hold attack to keep a rapid jab going
       this.rapidLoops++; this.t = m.rapid.to; this.swingSound(1.3 + 0.08 * this.rapidLoops, 0.3);
     }
+    if(m.rush&&this.t>m.rush.to)this.vx*=.78;
+    if(m.rush&&this.t>=m.rush.from&&this.t<=m.rush.to){this.vx=this.facing*m.rush.speed;if(!this.grounded)this.vy=Math.min(this.vy,.8);if(this.t%3===0)this.match.puff(this.x-this.facing*12,this.y-8,0xcde9ff,2);}
     if (m.reflect) this.slamReflect();                  // Lacy's Grand Slam bats projectiles back
     if (m.multi && m.hits && m.hits.some((h) => h.from === this.t)) this.attackId = newAttackId();   // each beat of a multi-hit hits again
     if (m.slide && this.grounded && this.t >= m.slide.from && this.t <= m.slide.to) {     // a dash attack carries its run along the floor
@@ -357,6 +366,7 @@ export class Fighter {
       const R = Math.random;
       for (let i = 0; i < 3; i++) this.match.particles.push({ shape: 'bubble', x: this.x + this.facing * 6 + (R() - 0.5) * 20, y: this.y - 64 - R() * 10, vx: (R() - 0.5) * 1.2, vy: -2.2 - R() * 1.6, life: 26 + R() * 12, color: [0x9ff0ff, 0xffffff, 0x3fc8ea][i], grav: -0.02, r: 1 + Math.floor(R() * 3), sway: R() * 6, size: 2 });
     }
+    if (m.bomb && this.t === m.spawnAt && this.match.projectiles.filter(p=>p.alive && p.owner===this && p instanceof YoungLinkBomb).length<2) this.match.projectiles.push(new YoungLinkBomb(this.match,this));
     if (m.wave && this.t === m.spawnAt) this.match.spawnWave(this, m.wave.full ? this.chordWave(m.wave) : m.wave);
     if (m.amp && this.t === m.spawnAt) this.match.spawnAmp(this, m.amp);
     if (m.flyer && this.t === m.spawnAt) this.match.spawnPoster(this, m.flyer);   // LAST SEEN's FLYER
@@ -396,7 +406,8 @@ export class Fighter {
   activeHitboxes() {
     const out = [];
     const add = (h, src) => {
-      const [bx, by, bw, bh] = h.box;
+      let [bx, by, bw, bh] = h.box;
+      if(src?.hookshot) { bx=youngLinkHook(this.t).reach-6;by=-33;bw=12;bh=12; }
       const x1 = this.facing > 0 ? this.x + bx : this.x - bx - bw;
       out.push({ x1, x2: x1 + bw, y1: this.y + by, y2: this.y + by + bh, h, owner: this, id: this.attackId, facing: this.facing, src, grab: !!(src && src.grab) });
     };
@@ -422,6 +433,12 @@ export class Fighter {
   physics(c) {
     const d = this.def;
     const s = this.state;
+    if(s==='yltether')return;
+    const juggle=this.youngLinkJuggle,o=juggle?.owner;
+    if(juggle){
+      if(o.alive&&o.state==='upb'&&o.t<26&&s==='hitstun'&&this.lastHitBy===o){this.x+=(o.x+juggle.side*16-this.x)*.55;this.y+=(o.y-8-this.y)*.55;this.vx=this.vy=this.lx=this.ly=0;this.grounded=false;this.platform=null;this.hitstun=Math.max(12,this.hitstun);return;}
+      this.youngLinkJuggle=null;
+    }
     if (s === 'grabbed' || s === 'seized') return;      // held: whoever holds them places them
     if (s === 'respawn') return;
     if (s.startsWith('ledge')) return;                    // hanging / climbing: the state places the fighter
@@ -552,6 +569,7 @@ export class Fighter {
   }
 
   respawn() {
+    this.soulAidUsed=false;this.sugarAidUsed=false;
     this.alive = true; this.percent = 0; this.hp = this.maxHp; this.curse = 0; this.slow = 0; this.swift = 0; this.star = 0; this.rage = 0; this.possessed = 0; this.possessImmune = 0; this.missingMark = 0; this.shaken = 0; this.frenzy = 0; this.axeLost = 0;
     this.x = 0; this.y = -230; this.vx = this.vy = this.lx = this.ly = 0;
     this.grounded = false; this.facing = 1; this.jumpsLeft = 1; this.usedUpB = false; this.airdodged = false;
@@ -570,14 +588,15 @@ export class Fighter {
   }
   st_dying() { if (this.t >= 80) this.match.onKO(this); }
 
-  destroy() { if (this.speech) this.speech.destroy(); if (this.scrImg) this.scrImg.destroy(); if (this.headImg) this.headImg.destroy(); if (this.leftBodies) this.clearBodies(); this.stopChargeSound(); this.sprite.destroy(); this.fx.destroy(); this.fxBack.destroy(); this.tag.destroy(); for (const gh of this.ghosts) gh.destroy(); }
+  destroy() { this.azureCape?.destroy(); if(this.fairySpeech)this.fairySpeech.destroy(); if (this.speech) this.speech.destroy(); if (this.scrImg) this.scrImg.destroy(); if (this.headImg) this.headImg.destroy(); if (this.leftBodies) this.clearBodies(); this.stopChargeSound(); this.sprite.destroy(); this.fx.destroy(); this.fxBack.destroy(); this.tag.destroy(); for (const gh of this.ghosts) gh.destroy(); }
 }
 
 // Attach the methods from the topic files to Fighter (they read and write the same `this`).
-for (const M of [FighterSpeech, FighterGrab, FighterSpecials, FighterDefense, FighterLimit, LimitUndertow, LimitBlade, FighterCostumeFx, FighterLedge, FighterRender, FighterTaunt, LimitMosh, FighterBeat, FighterLastSeen, LimitAero, FighterWhatOnceWas]) {
+for (const M of [FighterSpeech, FighterGrab, FighterSpecials, FighterDefense, FighterLimit, LimitUndertow, LimitBlade, FighterCostumeFx, FighterLedge, FighterRender, FighterTaunt, LimitMosh, FighterBeat, FighterLastSeen, LimitAero, FighterWhatOnceWas, YoungLinkActions]) {
   for (const k of Object.getOwnPropertyNames(M.prototype)) {
     if (k === 'constructor') continue;
     if (Object.prototype.hasOwnProperty.call(Fighter.prototype, k)) throw new Error('Fighter method defined twice: ' + k);
     Object.defineProperty(Fighter.prototype, k, Object.getOwnPropertyDescriptor(M.prototype, k));
   }
 }
+

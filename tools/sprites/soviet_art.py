@@ -255,3 +255,4 @@ def flag_emblem():
 if __name__ == '__main__':
     face_sickle(); poster(); dolls(); flag_emblem()
     print('done')
+

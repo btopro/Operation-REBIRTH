@@ -1,3 +1,4 @@
+import {LiminalCastleStage,drawLiminalCastlePreview} from './liminalCastleStage.js';
 // Every stage shown on the stage select screen, in grid order.
 // Locked entries are placeholders for stages still being made.
 import { SkyStage, PAL } from './skyStage.js';
@@ -14,9 +15,11 @@ import { MaskedStage, drawMaskedPreview } from './maskedStage.js';
 import { StalingradStage, drawStalingradPreview } from './stalingradStage.js';
 import { WillowStage, drawWillowPreview } from './willowStage.js';
 import { DesertStage, drawDesertPreview } from './desertStage.js';
+import { MatrixStage, drawMatrixPreview } from './matrixStage.js';
 import { owns } from '../progress.js';
 
 export const STAGES = [
+  {id:'endless-castle',music:'bgm_endless_castle',name:'ENDLESS CASTLE',available:true,make:scene=>new LiminalCastleStage(scene),blurb:['An abandoned checkerboard castle.', 'Uneven terraces and silent balconies.'],hazard:'NO STAGE HAZARDS.\nFIXED TERRACES / TWO BALCONIES.',preview:drawLiminalCastlePreview},
   {
     id: 'sky-sanctum', music: 'bgm_sky', name: 'SKY SANCTUM', available: true, make: (scene) => new SkyStage(scene),
     blurb: ['A flat island floating above the clouds,', 'with three cloud ledges to jump through.'],
@@ -105,6 +108,12 @@ export const STAGES = [
     blurb: ['On the roof of a motorhome doing ninety', 'across the desert. Fall off and the road takes you.'],
     hazard: 'THE SWAT VAN: LASER SIGHTS, GUNFIRE\nAND GRENADES. THE ROAD DRAGS YOU AWAY.',
     preview: drawDesertPreview,
+  },
+  {
+    id: 'the-construct', music: 'bgm_construct', name: 'THE CONSTRUCT', available: true, make: scene => new MatrixStage(scene),
+    blurb: ['A code-rain rooftop inside a living simulation.', 'The system rewrites its floating platforms.'],
+    hazard: 'MOVING LEDGES AND ARENA REWRITES.\nMARKED LANES WARN BEFORE SCAN BEAMS FIRE.',
+    preview: drawMatrixPreview,
   },
 ];
 

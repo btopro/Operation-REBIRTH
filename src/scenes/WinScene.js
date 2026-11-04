@@ -1,3 +1,6 @@
+import {drawNavi} from '../fighters/navi.js';
+import {youngLinkClip} from '../fighters/youngLinkAnimation.js';
+import {syncAzureCape} from '../fighters/azureCape.js';
 // WIN CUTSCENES: when Soul Summoner, Mr Wake, Lacy or one of the test fighters (NU, AERO, WHAT ONCE WAS,
 // ROSEMARY) wins a match, a short cinematic about their backstory
 // plays before the results (MatchScene.toResults sends the winner here; everyone else goes straight to Results).
@@ -14,6 +17,8 @@ import { ROSTER, TEST_ROSTER, showFighter } from '../fighters/roster.js';
 import { skinTexture, skinInfo } from '../fighters/skins.js';
 import { AERO_FULL } from '../fighters/aero.js';
 import { SEEN } from '../fighters/lastSeen.js';
+import { PremiumShots } from './premiumOutros.js';
+import { ShowcaseShots } from './skinShowcase.js';
 import { SKIN_CUTS, SkinShots } from './winSkins.js';
 import { sfx } from '../audio/sfx.js';
 import { stopMusic, playMusic } from '../audio/music.js';
@@ -21,6 +26,7 @@ import { stopMusic, playMusic } from '../audio/music.js';
 const W = VIEW_W, H = VIEW_H;
 // how long each cutscene runs (frames), when its title card comes in, and its words
 const CUTS = {
+  'young-link': {len:320,card:190,name:'YOUNG LINK',line:'COURAGE NEVER GROWS OLD.',sub:'THE KOKIRI SWORDSMAN',color:'#b9ed82',stroke:'#10220a',shots:[[0,'forest']]},
   'soul-summoner': { len: 400, card: 236, name: 'SOUL SUMMONER', line: 'REST NOW. YOU FOUGHT WELL.', sub: 'THE BLUE-FLAME KNIGHT',
     color: '#8ad8ff', stroke: '#06142a', shots: [[0, 'graves'], [124, 'close'], [204, 'crown']] },
   'mr-wake': { len: 420, card: 262, name: 'MR WAKE', line: 'THANK YOU FOR THE DANCE.', sub: 'THE GENTLEMAN OF THE DEEP',
@@ -52,6 +58,7 @@ export class WinScene extends Phaser.Scene {
     const win = data.results[0];
     this.win = win;
     this.cut = SKIN_CUTS[win.fighter + ':' + skinInfo(win.fighter, win.skin || 0).name] || CUTS[win.fighter];   // a costume's own outro (winSkins.js), or the fighter's
+    if(this.cut.rivalLine){const rival=ALL().find(r=>r.id===data.results[1]?.fighter)?.name||'THE RIVAL';this.cut={...this.cut,line:rival+this.cut.rivalLine};}
     this.def = (ALL().find((r) => r.id === win.fighter) || ROSTER[0]).def;
     stopMusic();
     if (this.cut.music) playMusic(this, this.cut.music, 0.85);             // (some outros have their own music: winSkins.js)
@@ -70,11 +77,16 @@ export class WinScene extends Phaser.Scene {
     this.faceImg = this.add.image(W / 2, 160, 'wow_faces', 0).setVisible(false);   // (WHAT ONCE WAS: Mason's faces, up on its screen)
     this.tvLines = Array.from({ length: 10 }, () => this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '12px', color: '#b8ffb8' }).setVisible(false));   // (WHAT ONCE WAS: its screen's text)
     this.front = this.add.graphics();                                      // in front of that
+    this.cineAzureCape=skinInfo(win.fighter,win.skin||0).theme==='azure'?this.add.sprite(0,0,'azure_water_cape',0).setVisible(false):null;
+    this.cineHands=this.cut.cinematic?this.add.sprite(0,0,'hk_shrine_hands_u',0).setVisible(false):null;
+    this.cineWorld=this.cut.cinematic?this.add.container(0,0,[this.bg,...this.losers.map(l=>l.s),this.mid,...(this.cineAzureCape?[this.cineAzureCape]:[]),this.hero,this.hero2,this.cineHands,this.fx,this.front]):null;
+    this.cineCues=new Set();this.planetSprite=null;this.planetState=null;
     this.over = this.add.graphics();                                       // flashes, vignette, letterbox
-    this.title = this.add.text(W / 2, 74, '', { fontFamily: FONT, fontSize: '30px', color: this.cut.color, stroke: this.cut.stroke, strokeThickness: 8 }).setOrigin(0.5).setVisible(false);
+    this.title = this.add.text(W / 2, 74, '', { fontFamily: FONT, fontSize: (this.cut.titleSize||30)+'px', color: this.cut.color, stroke: this.cut.stroke, strokeThickness: 8 }).setOrigin(0.5).setVisible(false);
     this.subT = this.add.text(W / 2, 50, this.cut.sub, { fontFamily: FONT, fontSize: '8px', color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setVisible(false);
     this.lineT = this.add.text(W / 2, H - 52, '', { fontFamily: FONT, fontSize: '10px', color: '#ffffff', stroke: '#000000', strokeThickness: 4 }).setOrigin(0.5).setVisible(false);
     this.skipT = this.add.text(W - 10, H - 12, 'PRESS ANY BUTTON TO SKIP', { fontFamily: FONT, fontSize: '6px', color: '#8a87a3' }).setOrigin(1, 1).setAlpha(0.7);
+    this.storyT=this.add.text(W/2,H-65,'',{fontFamily:FONT,fontSize:'8px',color:'#e8edf2',stroke:'#080d14',strokeThickness:3,align:'center'}).setOrigin(.5).setVisible(false);
     this.flash = 0; this.clicked = false;
     this.input.on('pointerdown', () => { this.clicked = true; });
     // a fixed scatter for things that shouldn't jump about between frames (graves, eyes, villagers...)
@@ -131,6 +143,15 @@ export class WinScene extends Phaser.Scene {
   glow(g, x, y, r, col, a) { for (let i = 1; i <= 6; i++) { g.fillStyle(col, a / 6); g.fillCircle(x, y, r * (1.15 - i * 0.15)); } }   // a soft light: rings, brighter in the middle
   cutTo() { this.flash = 6; sfx('whoosh', 0.5, 0.7); this.cameras.main.shake(80, 0.004); }
 
+  shot_young_link_forest(t) {
+    this.bg.fillStyle(0x0a1618);this.bg.fillRect(0,0,W,H);
+    for(let i=0;i<12;i++){this.bg.fillStyle(i%2?0x112d29:0x173b31);this.bg.fillRect(i*61-12,34,20+i%3*5,265);}
+    this.bg.fillStyle(0x28432b);this.bg.fillRect(0,295,W,65);
+    this.hero.setTexture(skinTexture(this,this.def.sheets.moves,this.def.id,this.win.skin||0),youngLinkClip('victory',Math.max(0,t-45))).setOrigin(.5,112/128).setPosition(W/2,296).setScale(3).setVisible(true).setAlpha(1);
+    drawNavi(this.fx,W/2+66+Math.sin(t*.06)*8,142+Math.sin(t*.09)*6,t,2);
+    for(let i=0;i<18;i++){const x=(i*53+t*.35)%W,y=70+(i*37)%210+Math.sin(t/25+i)*8;this.fx.fillStyle(0xcaf5a0,.4+.3*Math.sin(t/15+i));this.fx.fillRect(x,y,2,2);}
+  }
+
   update() {
     const t = ++this.t, C = this.cut;
     // skip
@@ -138,16 +159,20 @@ export class WinScene extends Phaser.Scene {
     if (t > 30 && (m.ok || m.back || this.clicked || m.pads.some((p) => p.button === 'a' || p.button === 'start' || p.button === 'b'))) return this.done();
     this.clicked = false;
     if (t >= C.len) return this.done();
+    this.planetSprite?.setVisible(false);this.cineHands?.setVisible(false);this.storyT?.setVisible(false);this.cineAction=null;this.cineFrame=null;
     this.bg.clear(); this.mid.clear(); this.fx.clear(); this.front.clear(); this.over.clear(); this.faceImg.setVisible(false); this.hero2.setVisible(false); if (this.koiImg) this.koiImg.setVisible(false); for (const L of this.tvLines) L.setVisible(false).setAlpha(1).setOrigin(0, 0).setScale(1).setStroke('#000000', 0).setShadow(0, 0, '#000000', 0, false, false).setFontSize(12).setColor('#b8ffb8').setBackgroundColor('rgba(0,0,0,0)');
     // which shot
     let si = 0; while (si + 1 < C.shots.length && t >= C.shots[si + 1][0]) si++;
     const [from, name] = C.shots[si], to = si + 1 < C.shots.length ? C.shots[si + 1][0] : C.len;
-    if (t === from && si > 0) this.cutTo();
+    if (t === from && si > 0 && !C.cinematic) this.cutTo();
     this['shot_' + (C.fn || this.def.id.replace(/-/g, '_')) + '_' + name](t, (t - from) / (to - from), t - from);
+    if(this.cineAzureCape)syncAzureCape(this.cineAzureCape,this.hero,t,false);
     // the title card
-    if (t >= C.card) {
-      const k = t - C.card, slam = Math.max(1, 3 - k * 0.4);
-      if (k === 0) { sfx('bighit', 0.9, 0.6); this.cameras.main.shake(160, 0.01); this.flash = 4; }
+    if(t<C.card){this.title.setVisible(false);this.subT.setVisible(false);this.lineT.setVisible(false);}
+    if(t>=C.card&&C.minimalCard){this.title.setVisible(false);this.subT.setVisible(false);this.lineT.setText(C.line).setVisible(true);}
+    else if (t >= C.card) {
+      const k = t - C.card, slam = C.cinematic?1:Math.max(1, 3 - k * 0.4);
+      if (k === 0 && !C.cinematic) { sfx('bighit', 0.9, 0.6); this.cameras.main.shake(160, 0.01); this.flash = 4; }
       this.title.setText(C.name).setScale(slam).setAlpha(Math.min(1, k / 3)).setVisible(true);
       this.subT.setVisible(k > 10);
       const n = Math.max(0, Math.floor((k - 18) / 2));                       // the line, typed out
@@ -156,16 +181,23 @@ export class WinScene extends Phaser.Scene {
     }
     if (C.off && t >= C.off) { this.title.setVisible(false); this.subT.setVisible(false); this.lineT.setVisible(false); }   // (the screen's switching off)
     // the letterbox (slides in), the flash
-    const bar = Math.min(34, t * 3);
+    const bar = C.skipFadeIn?34:Math.min(34, t * 3);
     this.over.fillStyle(0x000000, 1); this.over.fillRect(0, 0, W, bar); this.over.fillRect(0, H - bar, W, bar);
     if (this.flash > 0) { this.over.fillStyle(0xffffff, this.flash / 6); this.over.fillRect(0, 0, W, H); this.flash--; }
-    if (t < 10) { this.over.fillStyle(0x000000, 1 - t / 10); this.over.fillRect(0, 0, W, H); }
+    if (t < 10 && !C.skipFadeIn) { this.over.fillStyle(0x000000, 1 - t / 10); this.over.fillRect(0, 0, W, H); }
     if (t > C.len - 14) { this.over.fillStyle(0x000000, (t - (C.len - 14)) / 14); this.over.fillRect(0, 0, W, H); }
+    this.lineT.setAlpha(1);this.storyT.setAlpha(1);this.skipT.setAlpha(.7);
+    if(C.fadeWhiteFrom!=null){
+      const white=Math.max(0,Math.min(1,(t-C.fadeWhiteFrom)/(C.fadeWhiteDuration||60)));
+      if(white>0){this.over.fillStyle(0xffffff,white);this.over.fillRect(0,0,W,H);this.lineT.setAlpha(1-white);this.storyT.setAlpha(1-white);this.skipT.setAlpha(.7*(1-white));}
+      if(this.cineAction)this.cineAction.whiteFade=white;
+    }
     this.skipT.setVisible(t > 30);
   }
   done() {
     if (this.leaving) return; this.leaving = true;
     if (this.cut.music) stopMusic();
+    if(this.data0.shopPreview){this.scene.stop();this.scene.wake('Shop');return;}
     if (this.data0.preview) return this.scene.start('TestFighters');     // (TEST FIGHTERS > WIN SCREEN)
     this.scene.start('Results', this.data0);
   }
@@ -875,3 +907,7 @@ export class WinScene extends Phaser.Scene {
 
 // the costume outros' shots (winSkins.js)
 for (const n of Object.getOwnPropertyNames(SkinShots.prototype)) if (n !== 'constructor') WinScene.prototype[n] = SkinShots.prototype[n];
+
+for(const n of Object.getOwnPropertyNames(ShowcaseShots.prototype))if(n!=='constructor')WinScene.prototype[n]=ShowcaseShots.prototype[n];
+
+for(const n of Object.getOwnPropertyNames(PremiumShots.prototype))if(n!=='constructor')WinScene.prototype[n]=PremiumShots.prototype[n];

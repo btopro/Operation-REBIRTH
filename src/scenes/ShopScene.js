@@ -1,3 +1,5 @@
+import {CHARACTER_SPEECH} from '../audio/speechPolicy.js';
+import {keeperFaceFor} from '../data/shopFacePolicy.js';
 // The Shop (TRINKETS > SHOP). Tabs of shelves along the top, a grid of item cards, and on the right the SHOPKEEPER -
 // an old TV sitting on his desk, with Mason's faces on the screen (calm / happy / money / shock / smug, picked by what
 // you do: KEEPER in src/data/shop.js) and a speech bubble - over a panel with the picked item's name, description and
@@ -27,10 +29,13 @@ import { MenuInput } from './menuInput.js';
 import { sfx } from '../audio/sfx.js';
 import { makeButton } from '../ui/button.js';
 import { addFullscreenButton } from '../ui/fullscreen.js';
+import { rarityFor } from '../data/skinRarities.js';
 import { SHOP, CURRENCY, KEEPER, GACHA_REFUND, gachaPool, shelfItems } from '../data/shop.js';
 import { getCoins, addCoins, buyItem, grantItem, owns, toggleEquip, isEquipped, reveal, unreveal } from '../progress.js';
 import { fighterById, showFighter } from '../fighters/roster.js';
 import { skinsFor, skinSheets } from '../fighters/skins.js';
+import { premiumAnimationFor } from '../fighters/premiumAnimations.js';
+import { hasWinCutscene } from './WinScene.js';
 import { stat, addSecret, checkAchievements, isUnlocked } from '../achievements.js';
 import { achievementToasts } from '../ui/toast.js';
 import { ArcadeBg, titleBanner, hintBar, panel, slant, ARC, shade } from '../ui/arcade.js';
@@ -124,12 +129,13 @@ export class ShopScene extends Phaser.Scene {
   constructor() { super('Shop'); }
 
   create() {
+    this.noliTapUntil=0;this.noliTapIndex=0;
     this.noli = false; unreveal('noli');              // NOLI lasts one visit: you come back to the normal shop
     this.riphood = this.soviet = false; this.mode = null; unreveal('riphood'); unreveal('papers');   // ...and so do RIPHOOD and PAPERSPLEASE
     this.call = 0; this.callKind = null;
     this.acc = ACC; this.pal = PAL; this.banner2 = null;
     this.t = 0; this.tab = 0; this.sel = 0; this.page = 0; this.menu = new MenuInput(this); this.clicked = null;
-    this.qKey = this.input.keyboard.addKey('Q'); this.eKey = this.input.keyboard.addKey('E'); this.pKey = this.input.keyboard.addKey('P');
+    this.qKey = this.input.keyboard.addKey('Q'); this.eKey = this.input.keyboard.addKey('E'); this.pKey = this.input.keyboard.addKey('P'); this.introKey=this.input.keyboard.addKey('I'); this.outroKey=this.input.keyboard.addKey('O');
     playMusic(this, 'bgm_title');
     this.bgFx = new ArcadeBg(this, ACC, { second: ARC.sections.trinkets });
     this.bg = this.add.graphics();
@@ -138,15 +144,17 @@ export class ShopScene extends Phaser.Scene {
     this.banner = titleBanner(this, 'SHOP', ACC, { crumb: 'TRINKETS  >  SHOP' });
     this.tabT = SHOP.map((tb, i) => txt(TAB.x + i * (TAB.w + TAB.gap) + TAB.w / 2, TAB.y + 6, tb.name, 7, '#c9c4dc', { stroke: '#07060e', strokeThickness: 3 }).setOrigin(0.5, 0));
     this.coinT = txt(W - 14, 34, '', 8, '#f3c358', { stroke: '#0b0a14', strokeThickness: 3 }).setOrigin(1, 0.5);
-    this.cardName = []; this.cardPrice = []; this.cardSpr = [];
+    this.cardName = []; this.cardPrice = []; this.cardSpr = []; this.cardRarity=[];
     this.pageT = this.add.text(PAGE.x, PAGE.y, '', { fontFamily: FONT, fontSize: '6px', color: '#f3c358' }).setOrigin(0.5).setVisible(false);
     for (let i = 0; i < PER; i++) {
       const [x, y] = this.cardAt(i);
       this.cardName.push(txt(x + GRID.w / 2, y + 70, '', 6, '#e8e4f4', { align: 'center' }).setOrigin(0.5, 0));
+      this.cardRarity.push(txt(x+GRID.w/2,y+79,'',5,'#ffffff').setOrigin(.5,0));
       this.cardPrice.push(txt(x + GRID.w / 2, y + 88, '', 6, '#f3c358').setOrigin(0.5, 0));
       this.cardSpr.push(this.add.sprite(x + GRID.w / 2, y + 62, 'ss_idle', 0).setVisible(false));   // a costume, worn by its fighter
     }
     this.nameT = txt(SIDE.x + 12, SIDE.y + 10, '', 8, '#ffffff', { stroke: '#07060e', strokeThickness: 3 });
+    this.rarityT=txt(SIDE.x+SIDE.w-12,SIDE.y+11,'',5,'#ffffff').setOrigin(1,0);
     this.infoT = txt(SIDE.x + 10, SIDE.y + 24, '', 6, '#c9c4dc', { lineSpacing: 4, wordWrap: { width: SIDE.w - 20 } });
     this.buyT = txt(SIDE.x + SIDE.w / 2, SIDE.y + SIDE.h - 20, 'BUY', 9, '#ffffff', { stroke: '#07060e', strokeThickness: 3 }).setOrigin(0.5, 0.5);
     this.prevT = txt(SIDE.x + 20 + BTN.prevW / 2, SIDE.y + SIDE.h - 20, 'PREVIEW', 6, '#ffffff').setOrigin(0.5, 0.5);
@@ -190,6 +198,7 @@ export class ShopScene extends Phaser.Scene {
         for (let i = 0; i < KEYPAD.keys.length; i++) { const [x, y] = this.keyAt(i); if (p.x >= x && p.x <= x + KEYPAD.w && p.y >= y && p.y <= y + KEYPAD.h) { this.secret.cur = i; this.secret.press = 6; return this.typeKey(KEYPAD.keys[i]); } }
         return;
       }
+      if(this.pv && p.y>=82 && p.y<=108 && p.x>=200 && p.x<=440){this.clicked=p.x<320?'pvintro':'pvoutro';return;}
       if (this.pv || this.spin) { this.clicked = this.pv && p.x < W / 3 ? 'pvprev' : this.pv && p.x > W * 2 / 3 ? 'pvnext' : 'ovok'; return; }
       if (Math.hypot(p.x - BELL.x, p.y - BELL.y) < BELL.r) return this.ringBell();
       if (this.soviet) for (const [x, y, w, h, k] of EGGS) if (p.x >= x && p.x <= x + w && p.y >= y && p.y <= y + h) { this.react('grin', k, 160); sfx('ding', 0.25, 1.6); return; }   // the other countries' things
@@ -198,7 +207,7 @@ export class ShopScene extends Phaser.Scene {
       for (let i = 0; i < PER; i++) { const [x, y] = this.cardAt(i); if (p.x >= x && p.x <= x + GRID.w && p.y >= y && p.y <= y + GRID.h) { if (this.sel === i) this.clicked = 'buy'; else { this.sel = i; sfx('menu', 0.4); } return; } }
       if (this.pages() > 1 && p.y >= PAGE.y - 8 && p.y <= PAGE.y + 8) { if (Math.abs(p.x - PAGE.x + 44) < 10) return this.flip(-1); if (Math.abs(p.x - PAGE.x - 44) < 10) return this.flip(1); }   // the page arrows
       if (p.x >= SIDE.x + 20 && p.x <= SIDE.x + SIDE.w - 20 && p.y >= BTN.y && p.y <= BTN.y + BTN.h) this.clicked = this.item() && this.item().kind === 'costume' && p.x < SIDE.x + 20 + BTN.prevW ? 'preview' : 'buy';
-      if (Math.hypot(p.x - KP.x, p.y - KP.y) < 50) { if (this.playing) this.stopPlaying(); else this.react('shock', 'poke'); }   // poke the shopkeeper (or switch his secret off)
+      if (Math.hypot(p.x - KP.x, p.y - KP.y) < 50) { this.pokeScreen(); }   // poke the shopkeeper (or switch his secret off)
     });
   }
 
@@ -256,11 +265,28 @@ export class ShopScene extends Phaser.Scene {
     const n = (key) => Math.max(1, this.textures.get(key).frameTotal - 1);
     const o = [def.originX ?? 0.5, def.originY], mo = def.movesOrigin || o;
     const seq = [{ label: 'IDLE', key: sh.idle, from: 0, n: (def.frameCounts && def.frameCounts.idle) || n(sh.idle), step: 6, o, loops: 2 }];
+    const cosmetic=premiumAnimationFor(def.id,it.skin);
+    if(cosmetic){seq[0]={label:'CUSTOM IDLE',key:cosmetic.idleKey,from:0,n:cosmetic.idle[1],step:cosmetic.idle[2],o:cosmetic.idleOrigin,loops:2};}
+    if(cosmetic)for(const [j,kind]of ['flourish','taunt'].entries()){const [from,count,step]=cosmetic[kind];seq.push({label:cosmetic.labels[j],key:cosmetic.key,from,n:count,step,o:cosmetic.origin,loops:1});}
     if (sh.run) seq.push({ label: 'RUN', key: sh.run, from: 0, n: (def.frameCounts && def.frameCounts.run) || n(sh.run), step: 5, o, loops: 3 });
     for (const k of ['jump', 'fall']) if (sh[k]) seq.push({ label: k.toUpperCase(), key: sh[k], from: 0, n: (def.frameCounts && def.frameCounts[k]) || n(sh[k]), step: 8, o, loops: 2 });
     if (def.ownAnims) for (const [k, l] of [['attack1', 'SWORD SLASH'], ['attack2', 'GRAND SLAM']]) if (sh[k]) seq.push({ label: l, key: sh[k], from: 0, n: def.frameCounts[k] || n(sh[k]), step: 5, o, loops: 1 });
-    if (def.moveAnims && sh.moves) for (const [k, l] of SHOW) { const A = def.moveAnims[k]; if (A) seq.push({ label: l, key: sh.moves, from: A[0], n: A[1], step: Math.max(1, A[2]), o: mo, loops: 1 }); }
+    if (def.moveAnims && sh.moves) for (const [k, l] of SHOW) { if(cosmetic&&k==='taunt')continue;const A = def.moveAnims[k]; if (A) seq.push({ label: l, key: sh.moves, from: A[0], n: A[1], step: Math.max(1, A[2]), o: mo, loops: 1 }); }
     this.pv = { it, def, seq, i: 0, t: 0 }; sfx('select', 0.5, 1.3); this.react('glasses', 'preview');
+  }
+  previewCinema(kind) {
+    const pv=this.pv;if(!pv)return;
+    const skin=Math.max(0,skinsFor(pv.def.id).findIndex(s=>s.name===pv.it.skin));
+    if(kind==='outro'&&!hasWinCutscene(pv.def.id))return;
+    this.clicked=null;
+    this.events.once('wake',()=>{this.menu=new MenuInput(this);this.clicked=null;this.preview();});
+    this.scene.sleep();
+    if(kind==='outro'){
+      this.scene.launch('Win',{shopPreview:true,results:[{fighter:pv.def.id,skin,slot:0,label:'PREVIEW'},{fighter:pv.def.id==='hero-knight'?'soul-summoner':'hero-knight',skin:0,slot:1,label:'RIVAL'}]});
+    }else{
+      const setup={...settings,mode:'stock',stocks:3,cpuCount:0,p1Pad:null,extraPads:[],picks:[pv.def.id],skins:[skin],stage:'sky-sanctum',items:false,hazards:false,crt:false};
+      this.scene.launch('Match',{shopPreview:{setup,name:pv.it.name}});
+    }
   }
   stepPreview(d) { const pv = this.pv; pv.i = (pv.i + d + pv.seq.length) % pv.seq.length; pv.t = 0; sfx('menu', 0.4); }
   closeOverlay() { if (this.spin) this.cheevos(); this.pv = null; this.spin = null; this.ov.clear(); this.ovSpr.setVisible(false); for (const d of this.dollSpr) d.setVisible(false); for (const x of [this.ovT, this.ovSub, this.ovHelp, this.ovList]) x.setText(''); }
@@ -277,13 +303,17 @@ export class ShopScene extends Phaser.Scene {
     o.fillStyle(0xfff4d8, 0.1); o.fillEllipse(W / 2, 300, 160, 10);
     for (const [k, x] of [[-1, 40], [1, W - 40]]) { o.fillStyle(C.gold, 0.6 + 0.4 * Math.sin(t * 0.1)); o.fillTriangle(x - 6 * k, 170, x - 6 * k, 190, x + 6 * k, 180); }   // < > arrows
     this.ovSpr.setVisible(true).setTexture(B.key, B.from + f).setOrigin(B.o[0], B.o[1]).setScale(2).setFlipX(!!pv.def.facesLeft).setPosition(W / 2, 300);
-    this.ovT.setText(pv.it.name);
-    this.ovSub.setText(pv.def.name + '\n' + B.label + '   (' + (pv.i + 1) + '/' + pv.seq.length + ')');
+    for(const x of [200,324]){o.fillStyle(0x253b50,1);o.fillRect(x,82,116,26);o.lineStyle(1,C.gold,.8);o.strokeRect(x,82,116,26);}
+    this.ovList.setPosition(W/2,91).setText('[I / X] INTRO     [O / Y] OUTRO');
+    const rarity=rarityFor(pv.it);
+    this.ovT.setText(pv.it.name).setColor(rarity?.css||'#ffffff');
+    this.ovSub.setText(pv.def.name + (rarity?' / '+rarity.label:'') + '\n' + B.label + '   (' + (pv.i + 1) + '/' + pv.seq.length + ')');
     this.ovHelp.setText(owns(pv.it.id) ? 'A/D CHANGE MOVE    K / ESC / B  CLOSE    (OWNED: PICK IT ON THE SELECT SCREEN)' : 'A/D CHANGE MOVE    J / ENTER / A  BUY FOR ' + pv.it.price + ' ' + this.cur() + '    K / ESC / B  CLOSE');
   }
 
   // ---------------------------------------------------------------- GACHA
   startSpin(it) {
+    this.ovList.setPosition(W/2,100);
     addCoins(-it.price); stat('spent', it.price); stat('spins', it.gacha.pulls);
     const res = [];
     for (let i = 0; i < it.gacha.pulls; i++) {
@@ -303,12 +333,12 @@ export class ShopScene extends Phaser.Scene {
     const S = this.spin, o = this.ov; o.clear(); S.t++;
     o.fillStyle(0x07050c, 0.94); o.fillRect(0, 0, W, H);
     for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2 + t * 0.004; o.fillStyle(i % 2 ? 0x1a1030 : 0x24143e, 1); o.fillTriangle(W / 2, 170, W / 2 + Math.cos(a) * 500, 170 + Math.sin(a) * 500, W / 2 + Math.cos(a + 0.13) * 500, 170 + Math.sin(a + 0.13) * 500); }
-    this.ovT.setText(S.it.name);
+    this.ovT.setText(S.it.name).setColor('#ffffff');
     if (S.done) {                                                           // the summary
       this.ovSpr.setVisible(false);
       const news = S.res.filter((r) => !r.dupe).length, back = S.res.reduce((n, r) => n + (r.back || 0), 0);
       this.ovSub.setText(news + ' NEW' + (back ? '   ' + back + ' ' + this.cur() + ' BACK FROM DUPLICATES' : ''));
-      this.ovList.setText(S.res.map((r) => (r.dupe ? '   ' : 'NEW ') + r.prize.name + (r.dupe ? '  (+' + r.back + ')' : '')).join('\n'));
+      this.ovList.setText(S.res.map((r) => (r.dupe ? '   ' : 'NEW ') + (rarityFor(r.prize)?'['+rarityFor(r.prize).label+'] ':'') + r.prize.name + (r.dupe ? '  (+' + r.back + ')' : '')).join('\n'));
       this.ovHelp.setText('NEW STAGE EFFECTS, TRACKS AND EXTRAS: SWITCH THEM ON IN THEIR SHELF    J / K  CLOSE');
       return;
     }
@@ -335,10 +365,10 @@ export class ShopScene extends Phaser.Scene {
     o.lineStyle(2, glow, 1); o.strokeRect(cx - 50, cy - 38, 100, 76);
     if (r.prize.kind === 'costume') {
       const fd = fighterById(r.prize.fighter), si = Math.max(0, skinsFor(fd.def.id).findIndex((k) => k.name === r.prize.skin));
-      showFighter(this.ovSpr.setVisible(true), fd.def, Math.floor(t / 6), si); this.ovSpr.setScale(Math.min(1.2, 70 / this.ovSpr.frame.height)).setPosition(cx, cy + 34).setFlipX(!!fd.def.facesLeft);
+      showFighter(this.ovSpr.setVisible(true), fd.def, Math.floor(t / 6), si); this.ovSpr.setScale(Math.min(1.2, 70 / this.ovSpr.frame.realHeight)).setPosition(cx, cy + 34).setFlipX(!!fd.def.facesLeft);
     } else if (r.prize.img) { this.icon(o, cx, cy, 16, r.prize, t); this.ovSpr.setVisible(true).setTexture(r.prize.img, r.prize.imgFrame ?? 0).setOrigin(0.5).setFlipX(false).setScale(1).setPosition(cx, cy); }
     else { this.ovSpr.setVisible(false); this.icon(o, cx, cy, 16, r.prize, t); }
-    this.ovSub.setText((r.dupe ? 'DUPLICATE: ' + r.prize.name + '  +' + r.back + ' ' + this.cur() : 'NEW! ' + r.prize.name) + '\n' + this.shelfOf(r.prize));
+    this.ovSub.setText((rarityFor(r.prize)?rarityFor(r.prize).label+' / ':'')+(r.dupe ? 'DUPLICATE: ' + r.prize.name + '  +' + r.back + ' ' + this.cur() : 'NEW! ' + r.prize.name) + '\n' + this.shelfOf(r.prize));
   }
   shelfOf(it) { const tb = SHOP.find((x) => x.items.includes(it)); return tb ? 'FROM THE ' + tb.name + ' SHELF' : ''; }
   // a MATRYOSHKA doll opening (one doll per prize, each smaller than the last): it wobbles, the top half twists and lifts
@@ -416,7 +446,7 @@ export class ShopScene extends Phaser.Scene {
   }
   hideKeypad() { if (this.kg) this.kg.clear(); if (this.keyT) this.keyT.forEach((t) => t.setVisible(false)); if (this.keyHint) this.keyHint.setVisible(false); }
   submitCode() {
-    const code = this.secret.typed, S = SECRETS[code];
+    const code = this.secret.typed.trim().toUpperCase(), S = SECRETS[code];
     if (!S) { this.secret.typed = ''; this.static = 8; this.react('shock', 'wrongcode'); this.secret.t = 0; sfx('curse', 0.3, 1.6); return; }
     window.removeEventListener('keydown', this.secret.onKey); this.hideKeypad(); this.input.keyboard.enabled = true; this.input.keyboard.enableGlobalCapture();
     this.secret = null; this.tvT.setText(''); this.tvCode.setText('');
@@ -443,6 +473,7 @@ export class ShopScene extends Phaser.Scene {
   // NOLI: he changes for good (the face, the lines, the haze), and the clip plays
   becomeNoli(S) {
     this.stopPlaying(true); this.endTakeover();
+    this.noliTapUntil=0;this.noliTapIndex=0;
     this.noli = true; this.setLook(S.look); reveal('noli');   // his own items appear on the shelves (shop.js hidden: 'noli')
     if (this.noliClip) { try { this.noliClip.pause(); } catch (e) { /* gone */ } }
     const a = this.noliClip = new Audio(); a.src = S.clip.find((u) => a.canPlayType(u.endsWith('ogg') ? 'audio/ogg; codecs="vorbis"' : 'audio/mpeg')) || S.clip[S.clip.length - 1];
@@ -685,8 +716,17 @@ export class ShopScene extends Phaser.Scene {
   // newly earned achievements: their banners slide in (achievements.js, ui/toast.js)
   cheevos() { const a = checkAchievements(); if (a.length) { achievementToasts(this, a, { delay: 600 }); if (!this.secret) this.react('grin'); } }
   say(s, color = '#ff8a8a') { this.msgT.setText(s).setColor(color); this.msg = 120; }
+  pokeScreen(){
+    if(this.playing){this.stopPlaying();return;}
+    this.react('shock','poke');
+    if(this.noli&&this.textures.exists('shop_face_noli_tap')){
+      this.noliTapIndex=(this.noliTapIndex+1)%2;
+      this.noliTapUntil=this.noliTapIndex?this.t+180:0;
+    }
+  }
   // the shopkeeper reacts: a face (for `hold` frames, then back to his calm face) and a line from KEEPER.lines
   react(face, line, hold = KEEPER.hold) {
+    if(face==='scar'&&!this.riphood)face='calm';
     if (face !== this.face) { this.static = 6; this.faceStart = this.t; sfx('glitch', 0.12, 1.8); }
     this.face = face; this.faceT = face === 'calm' ? 0 : hold;
     if (face !== 'calm') this.jolt = 10;                                                 // the set rocks a little on the desk
@@ -695,6 +735,7 @@ export class ShopScene extends Phaser.Scene {
   }
   // NOLI talks: one of his glitchy sounds (a new one cuts off the last; the little blip waits its turn)
   noliVoice(k) {
+    if(!CHARACTER_SPEECH)return;
     const key = 'noli_v_' + k + '_' + Math.floor(Math.random() * (NOLI_MOODS[k] || 1));
     if (!this.cache.audio.exists(key) || this.t < (this.hushUntil || 0)) return;   // (quiet while the NOLI clip plays)
     this.nextMutter = this.t + NOLI_MUTTER[0] + Math.floor(Math.random() * (NOLI_MUTTER[1] - NOLI_MUTTER[0]));
@@ -740,7 +781,7 @@ export class ShopScene extends Phaser.Scene {
     if (this.soviet) this.ushanka(g, tx, hy, t, rock, desk);
     }
     // the face on the screen: the current face's strip, animated if it has more than one frame
-    const fc = this.noli ? 'noli' : this.soviet ? 'sickle' : this.face, key = 'shop_face_' + fc, F = KEEPER.faces[fc], n = Math.max(1, this.textures.get(key).frameTotal - 1);
+    const fc = keeperFaceFor(this,this.textures.exists('shop_face_scar'),this.textures.exists('shop_face_noli_tap')), key = 'shop_face_' + fc, F = KEEPER.faces[fc], n = Math.max(1, this.textures.get(key).frameTotal - 1);
     // ...and alive: every face moves a little in its own way (see faceMotion)
     const [mx, my, msx, msy] = this.faceMotion(t);
     const gx = this.noli && Math.random() < 0.03 ? Math.round((Math.random() - 0.5) * 6) : 0;                 // NOLI: his face skips sideways now and then
@@ -1162,6 +1203,8 @@ export class ShopScene extends Phaser.Scene {
       const ok = m.ok || this.clicked === 'ovok' || m.pads.some((p) => p.button === 'a'), back = m.back || m.pads.some((p) => p.button === 'b') || Phaser.Input.Keyboard.JustDown(this.pKey);
       const cl = this.clicked; this.clicked = null;
       if (this.pv) {
+        if(cl==='pvintro'||Phaser.Input.Keyboard.JustDown(this.introKey)||m.pads.some(p=>p.button==='x'))return this.previewCinema('intro');
+        if(cl==='pvoutro'||Phaser.Input.Keyboard.JustDown(this.outroKey)||m.pads.some(p=>p.button==='y'))return this.previewCinema('outro');
         if (m.left || cl === 'pvprev') this.stepPreview(-1);
         if (m.right || cl === 'pvnext') this.stepPreview(1);
         if (back || (ok && owns(this.pv.it.id))) { this.closeOverlay(); sfx('menu', 0.5); }
@@ -1223,6 +1266,8 @@ export class ShopScene extends Phaser.Scene {
       g.fillStyle(this.pal.window, 1); g.fillRect(x + 8, y + 8, GRID.w - 16, 56);                   // the icon window
       if (on) for (let k = 0; k < 2; k++) slant(g, x + 8 + ((t * 1.5 + k * 50) % (GRID.w + 20)) - 20, y + 8, 10, 56, 0xffffff, 0.05, 20);   // light sweeping the picked card's window
       this.icon(g, x + GRID.w / 2, y + 36, 16, it, t + i * 9);
+      const rarity=rarityFor(it);this.cardRarity[i].setText(rarity?.label||'').setColor(rarity?.css||'#ffffff');
+      if(rarity){const rw=rarity.label.length*5+8;g.fillStyle(0x070e1b,.9);g.fillRect(x+(GRID.w-rw)/2,y+78,rw,8);g.fillStyle(rarity.color,.9);g.fillRect(x+3,y+3,GRID.w-6,2);}
       this.cardName[i].setText(it ? it.name : 'COMING SOON').setColor(it ? '#e8e4f4' : '#5a4a70');
       const mine = it && !it.gacha && owns(it.id), lit = mine && isEquipped(it.kind, it.id);
       this.cardPrice[i].setText(!it ? '' : lit ? 'ON' : mine ? 'OWNED' : it.price + ' ' + this.cur()).setColor(lit ? '#7aff8a' : mine ? '#c9c4dc' : '#f3c358');
@@ -1232,7 +1277,7 @@ export class ShopScene extends Phaser.Scene {
       if (fd && fd.def) {
         const si = skinsFor(fd.def.id).findIndex((k) => k.name === it.skin);
         showFighter(spr.setVisible(true), fd.def, Math.floor((t + i * 7) / 6), Math.max(0, si));
-        spr.setScale(Math.min(1, 54 / spr.frame.height, 74 / spr.frame.width * 1.3)).setPosition(x + GRID.w / 2, y + 62);
+        spr.setScale(Math.min(1, 54 / spr.frame.realHeight, 74 / spr.frame.realWidth * 1.3)).setPosition(x + GRID.w / 2, y + 62);
       } else if (it && it.img) spr.setVisible(true).setTexture(it.img, it.imgFrame ?? 0).setOrigin(0.5).setFlipX(false).setScale(it.gacha ? 1 : 0.8).setPosition(x + GRID.w / 2, y + 36 + Math.round(Math.sin((t + i * 9) * 0.05) * 2));   // e.g. the GALAXY FRAGMENT, bobbing
       else spr.setVisible(false);
       if (on) { const p = (t % 60) / 60; g.lineStyle(2, this.acc, 0.6 * (1 - p)); g.strokeRect(x - 2 - p * 4, y - 2 - p * 4, GRID.w + 4 + p * 8, GRID.h + 4 + p * 8); }   // a pulse round the picked card
@@ -1240,7 +1285,9 @@ export class ShopScene extends Phaser.Scene {
     // the details panel
     const it = this.item();
     panel(g, SIDE.x, SIDE.y, SIDE.w, SIDE.h, this.acc, { sk: 6, fill: this.pal.cardIn });
-    this.nameT.setText(it ? it.name : 'COMING SOON');
+    const rarity=rarityFor(it);
+    this.nameT.setText(it ? it.name : 'COMING SOON').setColor(rarity?.css||'#ffffff');
+    this.rarityT.setText(rarity?.label||'').setColor(rarity?.css||'#ffffff');
     this.infoT.setText(it ? it.info || '' : 'THIS SHELF IS EMPTY FOR NOW.');
     const lab = this.label(it), mine = it && !it.gacha && owns(it.id);
     this.buyT.setText(lab === 'BUY' || lab === 'SPIN' ? lab + '  ' + it.price : lab);

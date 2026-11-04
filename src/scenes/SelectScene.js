@@ -2,6 +2,7 @@
 // human. Move your cursor onto a fighter and press attack to pick; press special to change your mind.
 // Point at a CPU card and press attack to change that CPU's level.
 // Colour variations: Q / E (keyboard), X / Y or LB / RB (controller), or click a colour swatch on a card.
+import { syncAzureCape } from '../fighters/azureCape.js';
 import { playMusic } from '../audio/music.js';
 import { VIEW_W, VIEW_H, FONT, PLAYER_COLORS, PLAYER_CSS, PLAYER_TINTS, DIFFICULTY } from '../config.js';
 import { settings, MODE_NAMES } from '../settings.js';
@@ -83,6 +84,7 @@ export class SelectScene extends Phaser.Scene {
       const x = 12 + i * (cardW + CARD_GAP);
       const card = { x, y: CARD_Y, w: cardW, h: CARD_H, p };
       card.bg = this.add.graphics();
+      card.azureCape = this.add.sprite(0,0,'azure_water_cape',0).setVisible(false);
       card.sprite = this.add.sprite(x + cardW / 2, CARD_Y + 150, 'ss_idle', 0).setOrigin(0.5, 59 / 64).setScale(2).setTint(PLAYER_TINTS[i]);
       card.unknown = this.add.text(x + cardW / 2, CARD_Y + 90, '?', { fontFamily: FONT, fontSize: '48px', color: '#3a3360' }).setOrigin(0.5);
       card.tag = this.add.text(x + 10, CARD_Y + 6, p.label, { fontFamily: FONT, fontSize: '11px', color: '#ffffff', stroke: '#07060e', strokeThickness: 4 });
@@ -257,6 +259,8 @@ export class SelectScene extends Phaser.Scene {
       const fdef = hasFighter && ROSTER.find((r) => r.id === shown).def;
       c.sprite.setVisible(!!fdef).setAlpha(p.pick ? 1 : 0.55);
       if (fdef) showFighter(c.sprite, fdef, Math.floor((this.t + p.slot * 7) / 6) % 32, finalSkins[p.slot]);
+      c.azureCape.setVisible(false);
+      if(fdef && skinInfo(shown,finalSkins[p.slot]).theme==='azure') syncAzureCape(c.azureCape,c.sprite,this.t);
       // colour swatches (click one to choose it)
       const sg = c.swatchG; sg.clear(); c.swatches = [];
       if (fdef) {

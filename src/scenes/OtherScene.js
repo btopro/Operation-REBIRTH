@@ -15,6 +15,7 @@ import { ArcadeBg, titleBanner, hintBar, ARC } from '../ui/arcade.js';
 import { ListScreen } from '../ui/listScreen.js';
 
 const ENTRIES = [
+  { name: 'CHALLENGES', icon: 'star', info: 'LEARN THE MAIN ROSTER.\n\nTHREE LESSONS PER FIGHTER.\nPRACTISE IN TRAINING OR REAL MATCHES.\n\nEACH CHALLENGE PAYS 30 COINS ONCE.\nPROGRESS IS SAVED IN THIS BROWSER.\n\nPRESS ENTER TO VIEW.', scene: 'Challenges' },
   { name: 'TRAINING', icon: 'dummy', info: 'PRACTISE AGAINST DUMMIES WITH\nNO STOCKS AND NO TIMER.\n\nSEE YOUR DAMAGE AND COMBOS,\nSHOW HITBOXES, SLOW DOWN TIME\nAND FILL YOUR LIMIT GAUGE.\n\nPRESS ENTER TO SET IT UP.', go: true },
   { name: 'HOW TO PLAY', icon: 'pad', info: 'MOVE         WASD\nJUMP         SPACE  (OR W)\nATTACK       J\nSPECIAL      K  (+ A DIRECTION)\nSHIELD       L  (+ DIRECTION: DODGE)\nGRAB         I\nLIMIT        O  (WHEN THE GAUGE IS FULL)\nTAUNT        1  (OR CLICK A STICK)\nPAUSE        ESC\n\nKNOCK RIVALS OFF THE STAGE!\nTHE MORE DAMAGE THEY HAVE,\nTHE FARTHER THEY FLY.' },
   { name: 'TIPS & ITEMS', icon: 'bulb', info: 'SMASH ATTACK: TAP A DIRECTION AND\n  ATTACK TOGETHER. SLOW, BUT IT KOS.\nHOLDING SOMEONE: J TO PUMMEL,\n  A DIRECTION TO THROW.\nGRABBED? MASH TO BREAK FREE.\nLIMITS CAN BE DODGED - WATCH FOR\n  THE WIND-UP AND JUMP OR ROLL.\n\nSOUL HEART    HEALS 25%\nLIMIT ORB     HALF A LIMIT GAUGE\nSWIFT FEATHER FASTER + EXTRA JUMP\nSTAR CANDY    5 S INVINCIBLE\nCURSED SKULL  SLOW AND WEAK!' },
@@ -51,6 +52,7 @@ export class OtherScene extends Phaser.Scene {
     if (m.ok || this.clicked || m.pads.some((p) => p.button === 'a')) {
       this.clicked = false;
       if (e.back) return this.back();
+      if (e.scene) return this.scene.start(e.scene);
       if (e.go) { settings.mode = 'training'; sfx('go', 0.8); this.scene.start('Setup'); return; }
       sfx('menu', 0.5, 1.2);
     }

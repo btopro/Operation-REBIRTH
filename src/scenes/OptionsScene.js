@@ -1,3 +1,4 @@
+import {PHONE_DEVICE} from '../performance.js';
 // Options: settings that apply to the whole game (not one battle): sound volumes, the CRT filter, touch
 // controls and full screen. Volumes and the other choices are remembered in this browser.
 // W/S or arrows pick a row, A/D or left/right change it, Esc / K / B goes back; or use the mouse.
@@ -11,9 +12,9 @@ import { addFullscreenButton, toggleFullscreen } from '../ui/fullscreen.js';
 import { ArcadeBg, titleBanner, hintBar, panel, rowBar, slant, pixIcon, ARC, shade } from '../ui/arcade.js';
 
 const ACC = ARC.sections.options;
-const ICON = ['speaker', 'speaker', 'crt', 'touch', 'screen', 'back'];
+const ICON = ['speaker', 'speaker', 'screen', 'crt', 'touch', 'screen', 'back'];
 
-const ROW_Y = 78, ROW_H = 38, X0 = 128, X1 = 528;
+const ROW_Y = 70, ROW_H = 34, X0 = 128, X1 = 528;
 
 export class OptionsScene extends Phaser.Scene {
   constructor() { super('Options'); }
@@ -50,6 +51,7 @@ export class OptionsScene extends Phaser.Scene {
     return [
       vol('musicVolume', 'MUSIC VOLUME', updateMusicVolume),
       vol('sfxVolume', 'SFX + VOICE VOLUME'),
+      {label:'PERFORMANCE',value:s.performance==='auto'?'AUTO - '+(PHONE_DEVICE?'PHONE':'FULL'):s.performance.toUpperCase(),change:d=>{const a=['auto','low','full'];s.performance=a[(a.indexOf(s.performance)+d+3)%3];saveOptions();}},
       { label: 'CRT FILTER', value: s.crt ? 'ON' : 'OFF', change: () => { s.crt = !s.crt; saveOptions(); } },
       { label: 'TOUCH CONTROLS', value: s.touch.toUpperCase(), change: (d) => { const o = ['auto', 'on', 'off']; s.touch = o[(o.indexOf(s.touch) + d + 3) % 3]; saveOptions(); } },
       { label: 'FULL SCREEN', value: this.scale.isFullscreen ? 'ON' : 'OFF', change: () => toggleFullscreen(this) },

@@ -11,6 +11,7 @@ import { ArcadeBg, titleBanner, hintBar, ARC } from '../ui/arcade.js';
 import { ListScreen } from '../ui/listScreen.js';
 
 const ENTRIES = [
+  {name:'SOUL BOARD',icon:'star',info:'EIGHT ROTATING SLOTS FOR ALL SOULS.\n\n1-5 STARS RATE STRENGTH AND POWER.\nMAIN SOULS FORM YOUR FOUNDATION.\nAID SOULS ADD THE ABILITIES.\n\nTHE BOARD CYCLES EVERY FIVE MINUTES.',scene:'SoulBoard'},
   { name: 'CHARACTER FILES', icon: 'files', info: 'THE FILES ON EVERY FIGHTER: WHO THEY ARE,\nWHERE THEY COME FROM, THEIR MOVES -\nAND THE STORIES BEHIND THEIR COSTUMES.', scene: 'Files' },
   { name: 'TEST FIGHTERS', icon: 'flask', info: 'FIGHTERS STILL IN THE LAB. TRY THEM OUT\nIN TRAINING OR AGAINST A CPU BEFORE\nTHEY JOIN THE REAL ROSTER.', scene: 'TestFighters' },
   { name: 'SHOP', icon: 'shop', info: 'SPEND WHAT YOU EARN ON COSTUMES, STAGES,\nMUSIC AND OTHER EXTRAS - OR TRY YOUR\nLUCK AT THE GACHA MACHINES.', scene: 'Shop' },

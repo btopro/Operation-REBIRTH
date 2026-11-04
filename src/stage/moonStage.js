@@ -1,6 +1,6 @@
 // "Gravemoon Bridge": a stone bridge over a misty chasm at night. A huge full moon, castle spires
-// and a smouldering volcano behind, horned gargoyle pillars holding up the bridge, and a red
-// lantern hanging from a crossbeam above the middle. All art is drawn in code.
+// behind a matching 64px stone tile kit, carved gargoyle piers, and a red
+// lantern hanging from a crossbeam above the middle. Native 64px tile art uses one shared palette.
 // Plays its own music (gravemoon).
 //
 // Stage hazards, one at a time every 10-14 s, each announced with a CAUTION banner first:
@@ -12,6 +12,7 @@
 // more. On the 10th hit the chain snaps: it falls (hurting anyone under it), shatters on the deck and
 // fire spreads across the whole bridge for 10 s, burning anyone standing in it. A new lantern is
 // lowered from the crossbeam a while later.
+import { drawMoonArt, pixelDisc } from './moonArt.js';
 import { sfx } from '../audio/sfx.js';
 import { HazardCycle } from './hazardCycle.js';
 
@@ -22,10 +23,10 @@ export const MPAL = {
   moon: 0xe6eaff, moonShade: 0xc2c8f0, crater: 0x9ca4d8, halo: 0x7470d0,
   mtnFar: 0x2c2c64, mtnFarLit: 0x4a4c90, mtnNear: 0x1a1a42, mtnNearLit: 0x3a3c76,
   window: 0xf3c358, lava: 0xff5a2a, lavaHot: 0xffb040, lavaDark: 0x8a1a10,
-  stone: 0x5a6690, stoneLight: 0x9aaad4, stoneMid: 0x404a74, stoneDark: 0x272c4c, rune: 0x7ac8f0,
+  stone: 0x53566c, stoneLight: 0xb3becd, stoneMid: 0x38384f, stoneDark: 0x232239, rune: 0x7ac8f0,
   iron: 0x2a2838, ironLit: 0x55526e, ironDark: 0x15131f,
   lanternFrame: 0x24182a, glass: 0xff6a20, glassHot: 0xffc060,
-  eye: 0xff3a3a, fog: 0x8a90c0,
+  eye: 0xff3a3a, fog: 0x7c8497,
 };
 
 export class MoonStage {
@@ -57,213 +58,26 @@ export class MoonStage {
     for (const [px, py, w] of pts) { g.fillStyle(col, 1); g.fillRect(px - Math.floor(w / 2), py, w, 1); }
     for (const [px, py, w] of pts) { if (w > 2) { g.fillStyle(lit, 1); g.fillRect(px - Math.floor(w / 2), py, Math.max(1, Math.round(w / 3)), 1); } }
   }
-  // jagged mountain ridge silhouette between x1..x2 with its base at baseY
-  ridge(g, x1, x2, baseY, peaks, col, lit, seed) {
-    let x = x1;
-    let k = seed;
-    while (x < x2) {
-      k = (k * 1103515245 + 12345) & 0x7fffffff;
-      const w = 30 + (k % 70), h = peaks[0] + (k >> 8) % peaks[1];
-      for (let r = 0; r < h; r += 3) {
-        const half = Math.max(1, Math.round((w / 2) * (1 - r / h)));
-        const cx = x + w / 2 + ((r >> 2) % 3) - 1;
-        g.fillStyle(col, 1); g.fillRect(cx - half, baseY - r - 3, half * 2, 3);
-        g.fillStyle(lit, 1); g.fillRect(cx - half, baseY - r - 3, Math.max(1, Math.round(half * 0.3)), 3);   // moonlit left faces
-      }
-      x += w * 0.6;
-    }
-    g.fillStyle(col, 1); g.fillRect(x1, baseY, x2 - x1, 400);
-  }
-  // a thin gothic spire with lit windows
-  spireTower(g, x, baseY, h, w, col) {
-    for (let r = 0; r < h; r += 3) {
-      const k = r / h, half = Math.max(1, Math.round((w / 2) * (k < 0.6 ? 1 : (1 - (k - 0.6) / 0.4))));
-      g.fillStyle(col, 1); g.fillRect(x - half, baseY - r - 3, half * 2, 3);
-    }
-    for (let r = 10; r < h * 0.55; r += 14) { g.fillStyle(MPAL.window, 1); g.fillRect(x - 1, baseY - r, 2, 3); }
-  }
-  // a horned gargoyle pillar hanging under the bridge deck at cx, from topY down into the mist
-  gargoyle(g, cx, topY) {
-    const S = MPAL;
-    // pillar shaft of stone blocks
-    for (let y = topY; y < topY + 240; y += 10) {
-      const w = 34 - Math.min(10, (y - topY) / 24);
-      g.fillStyle(S.outline, 1); g.fillRect(cx - w / 2 - 2, y, w + 4, 10);
-      g.fillStyle(S.stoneDark, 1); g.fillRect(cx - w / 2, y, w, 9);
-      g.fillStyle(S.stoneMid, 1); g.fillRect(cx - w / 2, y, w * 0.3, 9);
-      g.fillStyle(S.outline, 1); g.fillRect(cx - w / 2 + ((y / 10) % 2 ? 8 : 18), y, 1, 9);
-    }
-    // head, built row by row: wide horned brow, sunken eyes, a snout, and a fanged open jaw
-    const hy = topY + 18;
-    const rows = [36, 40, 44, 44, 42, 40, 38, 34, 30, 30, 30, 28, 26, 22];   // half-widths x2, every 3 px
-    rows.forEach((w, r) => {
-      const y = hy + r * 3;
-      g.fillStyle(S.outline, 1); g.fillRect(cx - w / 2 - 2, y, w + 4, 3);
-      g.fillStyle(S.stoneMid, 1); g.fillRect(cx - w / 2, y, w, 3);
-      g.fillStyle(S.stone, 1); g.fillRect(cx - w / 2, y, Math.round(w * 0.3), 3);
-      g.fillStyle(S.stoneDark, 1); g.fillRect(cx + Math.round(w * 0.25), y, w / 2 - Math.round(w * 0.25), 3);
-    });
-    g.fillStyle(S.outline, 1); g.fillRect(cx - 22, hy + 8, 44, 3);                      // heavy brow ridge shadow
-    g.fillStyle(S.stoneLight, 1); g.fillRect(cx - 22, hy + 6, 18, 2); g.fillRect(cx + 4, hy + 6, 10, 2);
-    for (const ex of [-13, 7]) {                                                          // angled eye sockets with a red glint
-      g.fillStyle(S.outline, 1); g.fillRect(cx + ex, hy + 11, 7, 4); g.fillRect(cx + ex + (ex < 0 ? 2 : 0), hy + 15, 5, 2);
-      g.fillStyle(S.eye, 1); g.fillRect(cx + ex + 2, hy + 12, 3, 2);
-    }
-    g.fillStyle(S.stone, 1); g.fillRect(cx - 4, hy + 15, 8, 8); g.fillStyle(S.stoneLight, 1); g.fillRect(cx - 4, hy + 15, 3, 7);   // snout
-    g.fillStyle(S.outline, 1); g.fillRect(cx - 4, hy + 22, 3, 2); g.fillRect(cx + 1, hy + 22, 3, 2);                               // nostrils
-    g.fillStyle(S.outline, 1); g.fillRect(cx - 10, hy + 27, 20, 11);                                                                // open jaw
-    g.fillStyle(0x3a0a14, 1); g.fillRect(cx - 7, hy + 30, 14, 6);
-    g.fillStyle(0xd8d8e8, 1);
-    for (const fx of [-9, -4, 2, 7]) g.fillRect(cx + fx, hy + 27, 2, 3 + ((fx + 9) % 2));                                         // upper fangs
-    for (const fx of [-7, 5]) g.fillRect(cx + fx, hy + 35, 2, 3);                                                                   // lower fangs
-    // big curling horns out of the head
-    this.horn(g, cx - 18, hy + 3, -1, 48, 2.2, 8, S.stoneMid, S.stoneLight);
-    this.horn(g, cx + 18, hy + 3, 1, 48, 2.2, 8, S.stoneMid, S.stoneLight);
-  }
-
   // ---------------------------------------------------------------- drawing
-  draw(worldLayer, bgLayer) {
-    const s = this.scene, S = MPAL;
-    // night sky in hard bands, brighter toward the moon's horizon
-    const sky = s.add.graphics().setScrollFactor(0);
-    S.sky.forEach((c, i) => { sky.fillStyle(c, 1); sky.fillRect(-400, -60 + i * 44, 1440, 45); });
-    sky.fillStyle(S.sky[S.sky.length - 1], 1); sky.fillRect(-400, -60 + S.sky.length * 44, 1440, 400);
-    // wispy cloud streaks
-    for (let i = 0; i < 14; i++) {
-      const y = 10 + (i * 37) % 170, x = (i * 151) % 700 - 40, w = 60 + (i * 53) % 140;
-      sky.fillStyle(S.streak, 0.35); sky.fillRect(x, y, w, 2); sky.fillRect(x + 20, y + 3, w * 0.6, 1);
-    }
-    for (let i = 0; i < 50; i++) { sky.fillStyle(S.star, (i % 3) ? 0.5 : 0.9); sky.fillRect((i * 263) % 660, (i * 97) % 200, 1, 1); }
-    bgLayer.push(sky);
-
-    // the moon with stepped glow rings
-    const moon = s.add.graphics().setScrollFactor(0.04);
-    const mx = 330, my = 92, R = 46;
-    for (const [rr, a] of [[R + 26, 0.08], [R + 16, 0.14], [R + 8, 0.22]]) { moon.fillStyle(S.halo, a); moon.fillCircle(mx, my, rr); }
-    for (let y = -R; y <= R; y += 2) {
-      const half = Math.round(Math.sqrt(R * R - y * y));
-      moon.fillStyle(S.moon, 1); moon.fillRect(mx - half, my + y, half * 2, 2);
-      moon.fillStyle(S.moonShade, 1); moon.fillRect(mx + Math.round(half * 0.45), my + y, half - Math.round(half * 0.45), 2);
-    }
-    for (const [cx, cy, r] of [[-14, -18, 7], [10, -6, 9], [-20, 10, 5], [16, 18, 6], [-4, 26, 4], [24, -22, 4]]) {
-      moon.fillStyle(S.crater, 1); moon.fillRect(mx + cx - r, my + cy - r / 2, r * 2, r);
-      moon.fillStyle(S.moonShade, 1); moon.fillRect(mx + cx - r + 1, my + cy - r / 2, r, 2);
-    }
-    bgLayer.push(moon);
-
-    // far mountains, castle spires and the volcano (its glow and embers are animated in step)
-    const far = s.add.graphics().setScrollFactor(0.15);
-    this.ridge(far, -200, 860, 236, [40, 70], S.mtnFar, S.mtnFarLit, 7);
-    for (const [x, h, w] of [[40, 120, 10], [62, 90, 8], [84, 150, 12], [104, 100, 8], [120, 70, 6], [150, 60, 6], [348, 110, 8], [358, 80, 6]]) this.spireTower(far, x, 200, h, w, S.mtnNear);
-    // volcano on the right
-    for (let r = 0; r < 120; r += 3) {
-      const half = Math.round(96 - r * 0.66) + ((r / 3) % 4 === 0 ? 2 : 0);
-      far.fillStyle(0x201838, 1); far.fillRect(600 - half, 230 - r, half * 2, 3);
-      far.fillStyle(0x3a2c5a, 1); far.fillRect(600 - half, 230 - r, Math.round(half * 0.22), 3);
-      if (r > 104) { far.fillStyle(0x5a1c2c, 1); far.fillRect(600 - half + 2, 230 - r, half * 2 - 4, 3); }   // lava light on the rim
-    }
-    bgLayer.push(far);
-    this.emberG = s.add.graphics().setScrollFactor(0.15);
-    bgLayer.push(this.emberG);
-    const near = s.add.graphics().setScrollFactor(0.3);
-    this.ridge(near, -300, 960, 300, [24, 50], S.mtnNear, S.mtnNearLit, 3);
-    bgLayer.push(near);
-
-    // a second, distant bridge with tiny lanterns (parallax)
-    const back = s.add.graphics().setScrollFactor(0.55);
-    back.fillStyle(0x161634, 1); back.fillRect(-300, 252, 1300, 10);
-    for (let x = -300; x < 1000; x += 48) {
-      back.fillRect(x, 262, 8, 60);
-      back.fillStyle(0x161634, 1); back.fillRect(x + 8, 262, 40, 4);
-      if ((x / 48) % 3 === 0) { back.fillStyle(S.glass, 0.9); back.fillRect(x + 2, 244, 3, 4); back.fillStyle(0x161634, 1); }
-    }
-    back.fillStyle(0x24245a, 0.5); back.fillRect(-300, 300, 1300, 120);        // mist over its legs
-    bgLayer.push(back);
-
-    // ---- the bridge itself (world layer, behind the fighters)
-    const g = s.add.graphics();
-    const P = this.platforms[0];
-    // gargoyle pillars under the deck
-    for (const cx of [-220, 0, 220]) this.gargoyle(g, cx, 30);
-    // rough underside of the deck
-    for (let row = 0; row < 4; row++) {
-      const y = 12 + row * 6, inset = row * 6 + (row * row);
-      g.fillStyle(S.outline, 1); g.fillRect(P.x1 + inset - 2, y, P.x2 - P.x1 - inset * 2 + 4, 6);
-      g.fillStyle(row < 2 ? S.stoneMid : S.stoneDark, 1); g.fillRect(P.x1 + inset, y, P.x2 - P.x1 - inset * 2, 6);
-      g.fillStyle(S.stoneDark, 1);
-      for (let k = P.x1 + inset + 7 + row * 5; k < P.x2 - inset - 6; k += 29) g.fillRect(k, y + 5, 6, 3 + (k % 4));
-    }
-    // horned iron railing along the back edge (low, behind fighters)
-    g.fillStyle(S.ironDark, 1); g.fillRect(P.x1 + 4, -22, P.x2 - P.x1 - 8, 3);
-    for (let x = P.x1 + 10; x < P.x2 - 6; x += 16) { g.fillStyle(S.iron, 1); g.fillRect(x, -22, 3, 22); g.fillStyle(S.ironLit, 1); g.fillRect(x, -22, 1, 22); }
-    for (const x of [-260, -160, -60, 40, 140, 240]) { this.horn(g, x + 10, -20, -1, 26, 1.8, 4); this.horn(g, x + 10, -20, 1, 26, 1.8, 4); }
-    // deck slab: moonlit flagstones with faint glowing runes
-    g.fillStyle(S.outline, 1); g.fillRect(P.x1 - 2, -2, P.x2 - P.x1 + 4, 16);
-    g.fillStyle(S.stone, 1); g.fillRect(P.x1, 0, P.x2 - P.x1, 12);
-    g.fillStyle(S.stoneLight, 1); g.fillRect(P.x1, 0, P.x2 - P.x1, 2);
-    g.fillStyle(S.stoneMid, 1); g.fillRect(P.x1, 9, P.x2 - P.x1, 3);
-    for (let k = P.x1 + 22; k < P.x2; k += 38) { g.fillStyle(S.stoneMid, 1); g.fillRect(k, 2, 1, 7); }
-    for (let k = P.x1 + 40; k < P.x2 - 20; k += 97) { g.fillStyle(S.rune, 0.55); g.fillRect(k, 4, 10, 1); g.fillRect(k + 3, 3, 4, 1); g.fillRect(k + 10, 5, 6, 1); }
-
-    // horned arches on the left and right: their crests are platforms 1 and 2
-    for (const A of [this.platforms[1], this.platforms[2]]) {
-      const cx = (A.x1 + A.x2) / 2, w = A.x2 - A.x1;
-      // two iron legs down to the deck
-      for (const lx of [A.x1 + 10, A.x2 - 14]) { g.fillStyle(S.outline, 1); g.fillRect(lx - 1, A.y, 6, -A.y); g.fillStyle(S.iron, 1); g.fillRect(lx, A.y, 4, -A.y); g.fillStyle(S.ironLit, 1); g.fillRect(lx, A.y, 1, -A.y); }
-      // horns sweeping up from the legs to frame the crest
-      this.horn(g, A.x1 + 12, -6, -1, 44, 2.4, 6); this.horn(g, A.x2 - 12, -6, 1, 44, 2.4, 6);
-      // crest bar (the platform)
-      g.fillStyle(S.outline, 1); g.fillRect(A.x1 - 2, A.y - 2, w + 4, 9);
-      g.fillStyle(S.iron, 1); g.fillRect(A.x1, A.y, w, 6);
-      g.fillStyle(S.ironLit, 1); g.fillRect(A.x1, A.y, w, 1);
-      // a small skull boss in the middle of the crest
-      g.fillStyle(S.stoneLight, 1); g.fillRect(cx - 5, A.y + 6, 10, 7); g.fillStyle(S.outline, 1); g.fillRect(cx - 3, A.y + 8, 2, 2); g.fillRect(cx + 1, A.y + 8, 2, 2);
-    }
-    // crossbeam (platform 3) on two tall horned posts behind the middle of the bridge
-    const C = this.platforms[3];
-    for (const px of [C.x1 + 6, C.x2 - 10]) { g.fillStyle(S.outline, 1); g.fillRect(px - 1, C.y, 6, -C.y); g.fillStyle(S.iron, 1); g.fillRect(px, C.y, 4, -C.y); g.fillStyle(S.ironLit, 1); g.fillRect(px, C.y, 1, -C.y); }
-    this.horn(g, C.x1 + 8, C.y + 4, -1, 50, 2.6, 6); this.horn(g, C.x2 - 8, C.y + 4, 1, 50, 2.6, 6);
-    g.fillStyle(S.outline, 1); g.fillRect(C.x1 - 2, C.y - 2, C.x2 - C.x1 + 4, 9);
-    g.fillStyle(S.iron, 1); g.fillRect(C.x1, C.y, C.x2 - C.x1, 6);
-    g.fillStyle(S.ironLit, 1); g.fillRect(C.x1, C.y, C.x2 - C.x1, 1);
-    worldLayer.push(g);
-
-    // animated: lantern glow and mist drifting through the gargoyles
-    this.lanternG = s.add.graphics();                                // the lantern + chain, drawn around the chain's anchor and rotated as it swings
-    this.lanternG.setPosition(0, this.platforms[3].y + 7);
-    this.fireG = s.add.graphics();                                   // the falling lantern and the fire on the deck
-    this.fogG = s.add.graphics();
-    this.hzG = s.add.graphics();                                   // gargoyle head, eye-beam, bats
-    worldLayer.push(this.fogG, this.lanternG, this.fireG, this.hzG);
-    this.cycle.makeBanner(s);
-  }
+  draw(worldLayer, bgLayer) { drawMoonArt(this, worldLayer, bgLayer); }
 
   // ---------------------------------------------------------------- per frame
   step(match) {
     this.t++;
     const t = this.t, S = MPAL;
-    // volcano: pulsing glow at the crater and embers rising
-    const e = this.emberG; e.clear();
-    const pulse = 0.5 + 0.5 * Math.sin(t * 0.05);
-    for (const [r, a] of [[34, 0.05], [24, 0.08], [14, 0.12]]) { e.fillStyle(S.lava, a + 0.04 * pulse); e.fillCircle(600, 108, r); }
-    e.fillStyle(S.lavaDark, 1); e.fillRect(584, 112, 32, 2);
-    e.fillStyle(S.lava, 1); e.fillRect(587, 111, 26, 2);
-    e.fillStyle(S.lavaHot, 0.6 + 0.4 * pulse); e.fillRect(595, 111, 10, 1);
-    for (let k = 0; k < 16; k++) {
-      const life = (t * (0.6 + (k % 4) * 0.2) + k * 23) % 90;
-      const x = 580 + ((k * 37) % 40) + Math.sin((t + k * 20) * 0.05) * 6, y = 104 - life * 0.9;
-      e.fillStyle(k % 3 ? S.lava : S.lavaHot, 1 - life / 90); e.fillRect(Math.round(x), Math.round(y), 2, 2);
-    }
+    // Sparse distant embers, snapped to the same two-pixel grid as the stone kit.
+    const e=this.emberG;e.clear();
+    for(let k=0;k<5;k++){const life=(t*.2+k*17)%68;e.fillStyle(0xba824d,.5*(1-life/68));e.fillRect(510+k*8,Math.floor((200-life)/2)*2,2,2);}
     const lampOut = [];
     this.stepLantern(match, lampOut);
     // mist rolling through the pillars below the deck
     const f = this.fogG; f.clear();
-    for (let k = 0; k < 9; k++) {
-      const y = 60 + k * 22, sp = 0.15 + (k % 3) * 0.08;
+    for (let k = 0; k < 4; k++) {
+      const y = 112 + k * 32, sp = 0.15 + (k % 3) * 0.08;
       for (let j = 0; j < 4; j++) {
         const x = ((j * 260 + k * 70 + t * sp) % 1040) - 520;
         f.fillStyle(S.fog, 0.07 + 0.02 * (k % 3) + k * 0.012);
-        f.fillRect(Math.round(x), y, 220, 10); f.fillRect(Math.round(x) + 30, y - 4, 140, 4); f.fillRect(Math.round(x) + 50, y + 10, 120, 4);
+        f.fillRect(Math.round(x/2)*2, y, 160, 8); f.fillRect(Math.round(x/2)*2 + 24, y - 4, 112, 4); f.fillRect(Math.round(x/2)*2 + 40, y + 8, 80, 4);
       }
     }
     f.fillStyle(0x2a2c58, 0.5); f.fillRect(-700, 230, 1400, 400);          // the chasm fades into deep mist
@@ -277,8 +91,8 @@ export class MoonStage {
   drawLamp(l, flick, hits, chain = true) {
     const S = MPAL, ly = 33;
     if (chain) for (let y = 0; y < ly; y += 4) { l.fillStyle(S.ironLit, 1); l.fillRect(-1, y, 3, 2); l.fillStyle(S.ironDark, 1); l.fillRect(0, y + 2, 1, 2); }
-    l.fillStyle(S.glass, 0.08 + 0.04 * flick); l.fillCircle(0, ly + 12, 34);
-    l.fillStyle(S.glass, 0.12 + 0.05 * flick); l.fillCircle(0, ly + 12, 20);
+    l.fillStyle(S.glass, 0.08 + 0.04 * flick); pixelDisc(l,0, ly + 12, 34);
+    l.fillStyle(S.glass, 0.12 + 0.05 * flick); pixelDisc(l,0, ly + 12, 20);
     l.fillStyle(S.outline, 1); l.fillRect(-9, ly - 2, 18, 30);
     l.fillStyle(S.lanternFrame, 1); l.fillRect(-8, ly - 1, 16, 4); l.fillRect(-8, ly + 23, 16, 4); l.fillRect(-4, ly - 5, 8, 4);
     l.fillStyle(S.glass, 1); l.fillRect(-6, ly + 3, 12, 20);
@@ -383,7 +197,7 @@ export class MoonStage {
     g.fillStyle(S.stoneDark, 1); g.fillRect(x + dir * 2 - 9, y + 6, 18, 6);                  // jaw
     g.fillStyle(0xe6eaff, 1); for (let k = -2; k <= 2; k++) g.fillRect(x + dir * 2 + k * 4 - 1, y + 6, 2, 3);   // fangs
     this.horn(g, x - 9, y - 12, -1, 16, 1.6, 5); this.horn(g, x + 9, y - 12, 1, 16, 1.6, 5);
-    g.fillStyle(S.eye, 0.25 * glow); g.fillCircle(x + dir * 4, y - 3, 10 + glow * 6);             // eye glow
+    g.fillStyle(S.eye, 0.25 * glow); pixelDisc(g,x + dir * 4, y - 3, 10 + glow * 6);             // eye glow
     for (const ex of [-5, 5]) { g.fillStyle(S.outline, 1); g.fillRect(x + dir * 3 + ex - 3, y - 6, 6, 5); g.fillStyle(glow > 0.9 ? 0xffd0d0 : S.eye, 0.4 + 0.6 * glow); g.fillRect(x + dir * 3 + ex - 2, y - 5, 4, 3); }
   }
   step_gaze(match, h, out) {
@@ -455,25 +269,16 @@ export class MoonStage {
 
 // Miniature of Gravemoon Bridge drawn into a box (x, y, w, h), for the stage select screen.
 export function drawMoonPreview(g, x, y, w, h) {
-  const S = MPAL, u = w / 100, v = h / 100;
-  const bh = Math.ceil(h / S.sky.length);
-  S.sky.forEach((c, i) => { g.fillStyle(c, 1); g.fillRect(x, y + i * bh, w, Math.min(bh, h - i * bh)); });
-  // moon
-  g.fillStyle(S.halo, 0.25); g.fillCircle(x + 50 * u, y + 26 * v, 17 * v);
-  g.fillStyle(S.moon, 1); g.fillCircle(x + 50 * u, y + 26 * v, 13 * v);
-  g.fillStyle(S.crater, 1); g.fillRect(x + 46 * u, y + 20 * v, 3 * u, 3 * v); g.fillRect(x + 52 * u, y + 28 * v, 4 * u, 3 * v);
-  // mountains and spires
-  const cl = (n) => Math.max(0, Math.min(100, n));
-  for (let i = 0; i < 12; i++) { const cx = 4 + i * 8.4, hh = 12 + (i * 7) % 14; g.fillStyle(S.mtnFar, 1); g.fillTriangle(x + cl(cx - 8) * u, y + 62 * v, x + cx * u, y + (62 - hh) * v, x + cl(cx + 9) * u, y + 62 * v); }
-  for (const [sx, sh] of [[10, 24], [14, 18], [18, 28]]) { g.fillStyle(S.mtnNear, 1); g.fillRect(x + sx * u, y + (62 - sh) * v, 1.6 * u, sh * v); }
-  g.fillStyle(S.mtnNear, 1); g.fillPoints([[72, 62], [84, 36], [92, 36], [100, 48], [100, 62]].map(([px, py]) => ({ x: x + px * u, y: y + py * v })), true);
-  g.fillStyle(S.lava, 0.3); g.fillCircle(x + 88 * u, y + 35 * v, 6 * v); g.fillStyle(S.lava, 1); g.fillRect(x + 84.5 * u, y + 35 * v, 7 * u, 1.6 * v);
-  g.fillStyle(S.mtnNear, 1); g.fillRect(x, y + 62 * v, w, 38 * v);
-  // bridge deck, pillars and mist
-  g.fillStyle(S.stoneDark, 1); for (const px of [16, 50, 84]) g.fillRect(x + (px - 3) * u, y + 74 * v, 6 * u, 26 * v);
-  g.fillStyle(S.stone, 1); g.fillRect(x + 6 * u, y + 70 * v, 88 * u, 4 * v);
-  g.fillStyle(S.stoneLight, 1); g.fillRect(x + 6 * u, y + 70 * v, 88 * u, 1 * v);
-  g.fillStyle(S.iron, 1); g.fillRect(x + 22 * u, y + 56 * v, 12 * u, 2 * v); g.fillRect(x + 66 * u, y + 56 * v, 12 * u, 2 * v); g.fillRect(x + 43 * u, y + 40 * v, 14 * u, 2 * v);
-  g.fillStyle(S.glass, 1); g.fillRect(x + 49 * u, y + 46 * v, 2 * u, 4 * v);
-  g.fillStyle(S.fog, 0.35); g.fillRect(x, y + 84 * v, w, 16 * v);
+  // Compose the same scene on a logical 64px grid for stage selection.
+  const r=(px,py,pw,ph,c)=>{g.fillStyle(c);g.fillRect(Math.round(x+px*w/64),Math.round(y+py*h/64),Math.ceil(pw*w/64),Math.ceil(ph*h/64));};
+  r(0,0,64,64,0x19172d);r(0,32,64,32,0x222039);
+  for(let yy=-14;yy<14;yy+=2){const half=Math.floor(Math.sqrt(Math.max(0,196-(yy+1)**2)));r(34-half,19+yy,half*2,2,0xd9dfdf);}
+  r(30,11,6,3,0x7c8497);r(38,21,5,3,0xb3becd);
+  for(const [tx,ty]of [[6,32],[12,28],[20,34]]){r(tx,ty,5,18,0x232239);r(tx+2,ty+3,1,2,0xba824d);}
+  for(const [px,py,pw]of [[10,36,12],[42,36,12],[25,20,14]]){
+    r(px+1,py,1,52-py,0x100f23);r(px+pw-2,py,1,52-py,0x100f23);r(px,py,pw,3,0x53566c);r(px,py,pw,1,0xb3becd);
+  }
+  r(31,23,1,8,0x53566c);r(30,30,4,7,0x100f23);r(31,31,2,5,0xe36b48);
+  r(3,50,58,2,0x38384f);r(3,52,58,7,0x53566c);r(3,52,58,1,0xb3becd);r(3,59,58,5,0x232239);
+  for(let px=5;px<60;px+=8){r(px,55,1,3,0x232239);r(px,47,1,5,0x53566c);}
 }

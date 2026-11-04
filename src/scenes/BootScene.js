@@ -1,3 +1,9 @@
+import {makeOriginalSoulPortraits} from '../souls/portraits.js';
+import {installMobileTextures} from '../mobileTextures.js';
+import {PREMIUM_ANIMS} from '../fighters/premiumAnimsData.js';
+import {CHARACTER_SPEECH,CHARACTER_NAME_CALLS,FIGHTER_ANNOUNCER_IDS} from '../audio/speechPolicy.js';
+import {KEEPER_SCAR_ASSET,NOLI_TAP_FACE_ASSET} from '../data/shopFacePolicy.js';
+import { loadFairyVoice } from '../audio/fairyVoice.js';
 import { NOLI_MOODS } from './ShopScene.js';
 import { loadVoiceLines } from '../audio/voiceLines.js';
 import { initSfx } from '../audio/sfx.js';
@@ -12,6 +18,49 @@ import scFall from '../fighters/aero_scorched/fall_sheet.png?inline';
 export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
   preload() {
+    installMobileTextures(this);
+    for(const k of ['idle','walk','run','jump','fall'])this.load.spritesheet('fists_'+k,'assets/fighters/fists/'+k+'_sheet.png',{frameWidth:96,frameHeight:96});
+    this.load.spritesheet('fists_moves','assets/fighters/fists/moves_sheet.png',{frameWidth:192,frameHeight:192});
+    for(const [key,file] of [['soul_medieval','medieval'],['soul_arcade_sky','arcade-sky'],['soul_misc','misc-souls']])this.load.image(key+'_source','assets/souls/'+file+'.png');
+    for(const id of ['bill-cipher','shadow-young-link'])this.load.audio('soul_music_'+id,['assets/audio/soul-battles/'+id+'.ogg','assets/audio/soul-battles/'+id+'.mp3']);
+    this.load.image('soul_shadow_young_link_source','assets/souls/shadow-young-link.png');
+    this.load.image('soul_redesign_source','assets/souls/ronin-finch-redesign.png');
+    this.load.image('soul_ink_demon_source','assets/souls/ink-demon.png');
+    this.load.image('soul_bendy_source','assets/souls/bendy.png');
+    this.load.image('soul_frost_fire_source','assets/souls/frost-fire.png');
+    this.load.image('soul_shadow_carnage_source','assets/souls/shadow-carnage.png');
+    this.load.image('soul_grimoire_source','assets/souls/mythic-grimoire.png');
+    this.load.image('soul_neo_japan_source','assets/souls/neo-japan.png');
+    this.load.image('soul_steampunk_source','assets/souls/steampunk.png');
+    this.load.image('soul_evolution_source','assets/souls/evolutions.png');
+    this.load.image('soul_new_aids_source','assets/souls/keepers.png');
+    this.load.image('soul_originals_source','assets/souls/originals.png');
+    this.load.image('soul_healing_orb','assets/souls/healing-orb.png');
+    this.load.spritesheet('soul_portraits','assets/souls/portraits.png',{frameWidth:724,frameHeight:724});
+    // The HTML image is visible before Phaser and remains above its canvas during asset loading.
+    const loadingProgress=(value)=>{
+      const percent=Math.round(value*100),bar=document.getElementById('loading-progress');
+      bar?.setAttribute('aria-valuenow',String(percent));
+      const fill=document.getElementById('loading-fill'),label=document.getElementById('loading-percent');
+      if(fill)fill.style.width=percent+'%';if(label)label.textContent=percent+'%';
+    };
+    this.load.on('progress',loadingProgress);
+    this.events.once('shutdown',()=>this.load.off('progress',loadingProgress));
+    for(const a of Object.values(PREMIUM_ANIMS)){this.load.spritesheet(a.key,a.path,{frameWidth:a.width,frameHeight:a.height});this.load.spritesheet(a.idleKey,a.idlePath,{frameWidth:a.idleWidth,frameHeight:a.idleHeight});}
+    for(const k of ['idle','run','juggle','jump','fall'])this.load.spritesheet('ss_judgment_'+k,'assets/fighters/soul-summoner/judgment/'+k+'_sheet.png',{frameWidth:64,frameHeight:64});
+    this.load.spritesheet('ss_judgment_moves','assets/fighters/soul-summoner/judgment/moves_sheet.png',{frameWidth:112,frameHeight:104});
+    this.load.spritesheet('azure_water_cape','assets/fighters/hero-knight/azure_water_cape.png',{frameWidth:64,frameHeight:64});
+    if(NOLI_TAP_FACE_ASSET)this.load.spritesheet('shop_face_noli_tap',NOLI_TAP_FACE_ASSET,{frameWidth:64,frameHeight:64});
+    if(KEEPER_SCAR_ASSET)this.load.spritesheet('shop_face_scar',KEEPER_SCAR_ASSET,{frameWidth:64,frameHeight:64});
+    if(CHARACTER_SPEECH)for(const key of ['fairy_question','lacy_restored','frost_freeze'])this.load.audio('cin_'+key,['assets/audio/outro-voices/'+key+'.ogg','assets/audio/outro-voices/'+key+'.mp3']);
+    for(const key of ['shrine','shrine_turn','shrine_release_u','shrine_hands_u','shrine_weapon'])this.load.spritesheet('hk_'+key,'assets/fighters/hero-knight/'+key+'_sheet.png',{frameWidth:150,frameHeight:90});
+    loadFairyVoice(this.load);
+    this.load.spritesheet('moon_tiles','assets/stages/gravemoon/tiles.png',{frameWidth:64,frameHeight:64});
+    this.load.spritesheet('gladiator_attack', new URL('../gladiator-attack-aligned.png', import.meta.url).href, { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('spirit_gladiator', new URL('../gladiator-aligned.png', import.meta.url).href, { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('spirit_kneel', new URL('../spirit-kneel.png', import.meta.url).href, { frameWidth: 48, frameHeight: 56 });
+    this.load.spritesheet('gladiator_kneel', new URL('../gladiator-kneel.png', import.meta.url).href, { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet('spirit_flight', new URL('../earth-skeletons.png', import.meta.url).href, { frameWidth: 48, frameHeight: 56 });
     this.load.spritesheet('ss_idle', 'assets/fighters/soul-summoner/idle_sheet.png', { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('wake_idle', 'assets/fighters/mr-wake/idle_sheet.png', { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('wake_run', 'assets/fighters/mr-wake/run_sheet.png', { frameWidth: 64, frameHeight: 64 });
@@ -26,6 +75,7 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('ss_fall', 'assets/fighters/soul-summoner/fall_sheet.png', { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('ss_moves', 'assets/fighters/soul-summoner/moves_sheet.png', { frameWidth: 112, frameHeight: 104 });   // tools/sprites/soul_summoner_moves.py
     for (const k of ['idle', 'run', 'jump', 'fall']) this.load.spritesheet('nu_' + k, 'assets/fighters/nu/' + k + '_sheet.png', { frameWidth: 64, frameHeight: 64 });   // NU (test fighter): tools/sprites/nu_moves.py
+    for (const k of ['idle','walk','run','jump','fall','moves']) this.load.spritesheet('yl_'+k, 'assets/fighters/young-link/'+k+'_sheet.png', {frameWidth:160,frameHeight:128});
     for (const k of ['idle', 'run', 'jump', 'fall']) this.load.spritesheet('aero_' + k, 'assets/fighters/aero/' + k + '_sheet.png', { frameWidth: 64, frameHeight: 64 });   // AERO (test fighter): tools/sprites/aero_moves.py
     this.load.spritesheet('aero_moves', 'assets/fighters/aero/moves_sheet.png', { frameWidth: 112, frameHeight: 104 });
     // FULL AERO: his transformed look (Mason's drawings, tools/sprites/art/full_aero*.png, built by aero_moves.py);
@@ -42,10 +92,10 @@ export class BootScene extends Phaser.Scene {
     for (const k of ['idle', 'run', 'jump', 'fall']) this.load.spritesheet('ls_soviet_' + k, 'assets/fighters/last-seen/soviet/' + k + '_sheet.png', { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('ls_soviet_moves', 'assets/fighters/last-seen/soviet/moves_sheet.png', { frameWidth: 112, frameHeight: 104 });
     for (const k of ['idle', 'run', 'jump', 'fall', 'moves']) this.load.spritesheet('ls_tank_' + k, 'assets/fighters/last-seen/tank/' + k + '_sheet.png', { frameWidth: 112, frameHeight: 104 });
-    for (const [pre, dir] of [['ls_', ''], ['ls_wrong_', 'wrong/'], ...['rave', 'showtime', 'drowned', 'angler'].map((c) => ['ls_wrong_' + c + '_', 'wrong/' + c + '/'])]) {
+    for (const [pre, dir] of [['ls_', ''], ['ls_bunny_', 'bunny/'], ['ls_wrong_bunny_', 'bunny/wrong/'], ['ls_wrong_', 'wrong/'], ...['rave', 'showtime', 'drowned', 'angler'].map((c) => ['ls_wrong_' + c + '_', 'wrong/' + c + '/'])]) {
       for (const k of ['idle', 'run', 'jump', 'fall']) this.load.spritesheet(pre + k, 'assets/fighters/last-seen/' + dir + k + '_sheet.png', { frameWidth: 64, frameHeight: 64 });
       this.load.spritesheet(pre + 'moves', 'assets/fighters/last-seen/' + dir + 'moves_sheet.png', { frameWidth: 112, frameHeight: 104 });
-      if (pre !== 'ls_') this.load.spritesheet(pre + 'axe', 'assets/fighters/last-seen/' + dir + 'axe.png', { frameWidth: 32, frameHeight: 40 });   // SEEN's axe, stuck in the floor (SCREAM)
+      if (pre !== 'ls_' && pre !== 'ls_bunny_') this.load.spritesheet(pre + 'axe', 'assets/fighters/last-seen/' + dir + 'axe.png', { frameWidth: 32, frameHeight: 40 });   // SEEN's axe, stuck in the floor (SCREAM)
     }
     for (const c of ['inferno', 'street', 'bones', 'school']) {   // NU's costumes with their own drawing (tools/sprites/nu_costume_moves.py)
       for (const k of ['idle', 'run', 'jump', 'fall']) this.load.spritesheet('nu_' + c + '_' + k, 'assets/fighters/nu/' + c + '/' + k + '_sheet.png', { frameWidth: 64, frameHeight: 64 });
@@ -68,9 +118,9 @@ export class BootScene extends Phaser.Scene {
     this.load.spritesheet('ss_run', 'assets/fighters/soul-summoner/run_sheet.png', { frameWidth: 64, frameHeight: 64 });
     // shop costumes with their own drawing (tools/sprites/shop_costumes.py): sheets in <fighter>/<costume>/
     for (const [pre, dir, ks, mw, mh] of [['ss_eclipse_', 'soul-summoner/eclipse/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['ss_aurora_', 'soul-summoner/aurora/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104],
-      ['wake_vampire_', 'mr-wake/vampire/', ['idle', 'run', 'jump', 'fall'], 176, 120], ['wake_sakura_', 'mr-wake/sakura/', ['idle', 'run', 'jump', 'fall'], 176, 120],
+      ['wake_choir_', 'mr-wake/choir/', ['idle', 'run', 'jump', 'fall'], 176, 120], ['wake_vampire_', 'mr-wake/vampire/', ['idle', 'run', 'jump', 'fall'], 176, 120], ['wake_sakura_', 'mr-wake/sakura/', ['idle', 'run', 'jump', 'fall'], 176, 120],
       ['nu_vapor_', 'nu/vapor/', ['idle', 'run', 'jump', 'fall'], 112, 104], ['aero_sunset_', 'aero/sunset/', ['idle', 'run', 'jump', 'fall'], 112, 104],
-      ['ss_celestial_', 'soul-summoner/celestial/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['ss_olive_', 'soul-summoner/olive/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['wake_plague_', 'mr-wake/plague/', ['idle', 'run', 'jump', 'fall'], 176, 120],
+      ['ss_orrery_', 'soul-summoner/orrery/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['ss_celestial_', 'soul-summoner/celestial/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['ss_olive_', 'soul-summoner/olive/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['wake_plague_', 'mr-wake/plague/', ['idle', 'run', 'jump', 'fall'], 176, 120],
       ['nu_glam_', 'nu/glam/', ['idle', 'run', 'jump', 'fall'], 112, 104], ['aero_midnight_', 'aero/midnight/', ['idle', 'run', 'jump', 'fall'], 112, 104],
       // the nesting-doll costumes (code PAPERSPLEASE)
       ['ss_tricolore_', 'soul-summoner/tricolore/', ['idle', 'juggle', 'run', 'jump', 'fall'], 112, 104], ['wake_teatime_', 'mr-wake/teatime/', ['idle', 'run', 'jump', 'fall'], 176, 120],
@@ -80,20 +130,22 @@ export class BootScene extends Phaser.Scene {
     }
     for (const [k, url] of [['idle', scIdle], ['run', scRun], ['jump', scJump], ['fall', scFall]]) this.load.spritesheet('aero_scorched_' + k, url, { frameWidth: 64, frameHeight: 64 });
     this.load.spritesheet('aero_scorched_moves', 'assets/fighters/aero/scorched/moves_sheet.png', { frameWidth: 112, frameHeight: 104 });
-    for (const k of ['idle', 'run', 'attack1', 'attack2', 'jump', 'fall', 'hit', 'death', 'guard', 'grab', 'idle_u', 'run_u', 'jump_u', 'fall_u', 'hit_u']) {
+    for (const k of ['idle', 'run', 'attack1', 'attack2', 'jump', 'fall', 'hit', 'death', 'guard', 'counter', 'grab', 'idle_u', 'run_u', 'jump_u', 'fall_u', 'hit_u']) {
       this.load.spritesheet('hk_' + k, 'assets/fighters/hero-knight/' + k + '_sheet.png', { frameWidth: 150, frameHeight: 90 });
       for (const w of [1, 2, 3]) this.load.spritesheet('hk_w' + w + '_' + k, 'assets/fighters/hero-knight/worn' + w + '/' + k + '_sheet.png', { frameWidth: 150, frameHeight: 90 });   // Battle-Worn stages
       this.load.spritesheet('hk_aka_' + k, 'assets/fighters/hero-knight/akatsuki/' + k + '_sheet.png', { frameWidth: 150, frameHeight: 90 });   // Akatsuki costume
       this.load.spritesheet('hk_sam_' + k, 'assets/fighters/hero-knight/samurai/' + k + '_sheet.png', { frameWidth: 150, frameHeight: 90 });   // Samurai costume
-      for (const [p, dir] of [['hk_obs_', 'obsidian/'], ['hk_cyb_', 'cyber/'], ['hk_ver_', 'verdant/'], ['hk_lib_', 'liberty/']]) this.load.spritesheet(p + k, 'assets/fighters/hero-knight/' + dir + k + '_sheet.png', { frameWidth: 150, frameHeight: 90 });   // shop costumes
+      for (const [p, dir] of [['hk_obs_', 'obsidian/'], ['hk_cyb_', 'cyber/'], ['hk_ver_', 'verdant/'], ['hk_lib_', 'liberty/'], ['hk_prism_', 'prism/']]) this.load.spritesheet(p + k, 'assets/fighters/hero-knight/' + dir + k + '_sheet.png', { frameWidth: 150, frameHeight: 90 });   // shop costumes
     }
-    for (const [key, dir] of [['hk_moves', ''], ['hk_w1_moves', 'worn1/'], ['hk_w2_moves', 'worn2/'], ['hk_w3_moves', 'worn3/'], ['hk_sam_moves', 'samurai/'], ['hk_aka_moves', 'akatsuki/'], ['hk_obs_moves', 'obsidian/'], ['hk_cyb_moves', 'cyber/'], ['hk_ver_moves', 'verdant/'], ['hk_lib_moves', 'liberty/']]) {
+    for (const [key, dir] of [['hk_moves', ''], ['hk_w1_moves', 'worn1/'], ['hk_w2_moves', 'worn2/'], ['hk_w3_moves', 'worn3/'], ['hk_sam_moves', 'samurai/'], ['hk_aka_moves', 'akatsuki/'], ['hk_obs_moves', 'obsidian/'], ['hk_cyb_moves', 'cyber/'], ['hk_ver_moves', 'verdant/'], ['hk_lib_moves', 'liberty/'], ['hk_prism_moves', 'prism/']]) {
       this.load.spritesheet(key, 'assets/fighters/hero-knight/' + dir + 'moves_sheet.png', { frameWidth: 180, frameHeight: 140 });   // tools/sprites/hero_knight_moves.py
     }
     for (const id of ['soul-summoner', 'mr-wake', 'hero-knight']) this.load.image('icon_' + id, 'assets/fighters/' + id + '/icon.png');   // select-screen icons
     this.load.spritesheet('ss_taunt', 'assets/fighters/soul-summoner/taunt_sheet.png', { frameWidth: 64, frameHeight: 64 });   // his taunt: Mason's drawing (16 frames)
     this.load.spritesheet('ss_juggle', 'assets/fighters/soul-summoner/juggle_sheet.png', { frameWidth: 64, frameHeight: 64 });
-    for (const id of ['soul-summoner', 'mr-wake', 'hero-knight', 'random', 'unlock', 'sky-sanctum', 'verdant-spires', 'gravemoon-bridge', 'neon-arcade', 'elderwood-hollow']) this.load.audio('voice_' + id, ['assets/audio/voice/' + id + '.ogg', 'assets/audio/voice/' + id + '.mp3']);   // announcer
+    for (const id of ['soul-summoner', 'mr-wake', 'hero-knight', 'random', 'unlock', 'sky-sanctum', 'verdant-spires', 'gravemoon-bridge', 'neon-arcade', 'elderwood-hollow']) if(CHARACTER_NAME_CALLS||!FIGHTER_ANNOUNCER_IDS.has(id))this.load.audio('voice_' + id, ['assets/audio/voice/' + id + '.ogg', 'assets/audio/voice/' + id + '.mp3']);   // announcer
+    this.load.audio('bgm_endless_castle',['assets/audio/music/endless-castle.ogg','assets/audio/music/endless-castle.mp3']);
+    this.load.audio('bgm_construct',['assets/audio/music/construct.ogg','assets/audio/music/construct.mp3']);
     this.load.audio('bgm_arcade', ['assets/audio/music/arcade.ogg', 'assets/audio/music/arcade.mp3']);
     this.load.audio('bgm_title', ['assets/audio/music/title.ogg', 'assets/audio/music/title.mp3']);
     this.load.audio('bgm_select', ['assets/audio/music/select.ogg', 'assets/audio/music/select.mp3']);
@@ -116,7 +168,7 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('bgm_fractured', ['assets/audio/music/fractured.ogg', 'assets/audio/music/fractured.mp3']);   // FRACTURED's music (tools/audio/fractured_music.py)
     this.load.spritesheet('shop_rtd', 'assets/shop/rtd_scream.png', { frameWidth: 68, frameHeight: 68 });   // the shop's RTD secret: Rosemary screaming (tools/sprites/rosemary_scream.py)
     for (const f of ['calm', 'happy', 'money', 'shock', 'smug', 'glasses', 'grin', 'melt', 'bow', 'stare', 'noli', 'sickle']) this.load.spritesheet('shop_face_' + f, 'assets/shop/face_' + f + '.png', { frameWidth: 64, frameHeight: 64 });   // the shopkeeper's faces (Mason's drawings; a sheet of 64x64 frames each, so they can be animated)
-    for (const [k, n] of Object.entries(NOLI_MOODS)) for (let i = 0; i < n; i++) this.load.audio('noli_v_' + k + '_' + i, ['assets/shop/noli_voice/' + k + '_' + i + '.ogg', 'assets/shop/noli_voice/' + k + '_' + i + '.mp3']);   // NOLI's glitchy voice (tools/audio/noli_voice.py)
+    if(CHARACTER_SPEECH)for (const [k, n] of Object.entries(NOLI_MOODS)) for (let i = 0; i < n; i++) this.load.audio('noli_v_' + k + '_' + i, ['assets/shop/noli_voice/' + k + '_' + i + '.ogg', 'assets/shop/noli_voice/' + k + '_' + i + '.mp3']);   // NOLI's glitchy voice (tools/audio/noli_voice.py)
     this.load.spritesheet('bp_guests', 'assets/stages/baseplate/guests.png', { frameWidth: 32, frameHeight: 32 });   // BASEPLATE 2012's guests: Mason's drawings, half size - frame 0, and 1 = the one in fifty (tools/sprites/baseplate_guests.py)
     for (const n of [4, 5, 6, 10]) this.load.audio('bgm_baseplate_' + n, ['assets/audio/music/baseplate_' + n + '.ogg', 'assets/audio/music/baseplate_' + n + '.mp3']);   // BASEPLATE 2012's rotating soundtrack: Mason's pixelated_audio 4, 5, 6, 10
     for (const n of ['shrine', 'rosebud', 'abyss', 'dialup', 'western', 'monster', 'ragtime', 'victory', 'weather']) this.load.audio('bgm_outro_' + n, ['assets/audio/music/outro_' + n + '.ogg', 'assets/audio/music/outro_' + n + '.mp3']);   // costume outro music (tools/audio/outro_music.py)
@@ -125,15 +177,18 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('sfx_idiot', ['assets/audio/sfx/idiot.ogg', 'assets/audio/sfx/idiot.mp3']);   // INFECTED.EXE: plays while YOU ARE AN IDIOT's pop-ups are up
     for (let i = 1; i <= 5; i++) this.load.audio('amp_song' + i, ['assets/audio/sfx/amp_song' + i + '.ogg', 'assets/audio/sfx/amp_song' + i + '.mp3']);   // NU's AMP: 8-bit rock loops at 90 BPM (1-4: tools/audio/amp_songs.py; 5: Mason's own track)
     this.load.audio('sfx_seen_scream', ['assets/audio/sfx/seen_scream.ogg', 'assets/audio/sfx/seen_scream.mp3']);   // LAST SEEN as SEEN: its SCREAM (cut from Mason's pixelated_audio_3)
-    this.load.audio('sfx_mail_voice', ['assets/audio/sfx/mail_voice.ogg', 'assets/audio/sfx/mail_voice.mp3']);   // INFECTED.EXE: "You've got mail!" (tools/audio/mail_voice.py)
-    this.load.spritesheet('item_heart_anim', SOUL_HEART.url, { frameWidth: SOUL_HEART.frame, frameHeight: SOUL_HEART.frame });   // the SOUL HEART pickup: Mason's 16-frame drawing (tools/sprites/soul_heart.py; inlined in the JS)
+    if(CHARACTER_SPEECH)this.load.audio('sfx_mail_voice', ['assets/audio/sfx/mail_voice.ogg', 'assets/audio/sfx/mail_voice.mp3']);
+    this.load.spritesheet('item_heart_anim', SOUL_HEART.url, { frameWidth: SOUL_HEART.frame, frameHeight: SOUL_HEART.frame });
     this.load.audio('fireball_charge', 'assets/audio/sfx/fireball_charge.wav');
     this.load.audio('fireball_throw', 'assets/audio/sfx/fireball_throw.wav');
   }
   create() {
     initSfx(this);
     makeItemTextures(this);
-    const l = document.getElementById('loading'); if (l) l.remove();
+    makeOriginalSoulPortraits(this);
     this.scene.start('Title');
+    const loading=document.getElementById('loading');
+    if(loading)requestAnimationFrame(()=>{loading.classList.add('ready');setTimeout(()=>loading.remove(),200);});
   }
 }
+
