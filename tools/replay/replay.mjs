@@ -9,7 +9,7 @@
 //
 // It checks the replay against the recording's checkpoints (every 30 frames): if they ever differ it says
 // at which frame and how - either the game changed since the recording (compare `game.commit` with
-// `git log`), or something in match logic isn't repeatable (real time, timers - see CLAUDE.md: Testing).
+// `git log`), or something in match logic isn't repeatable (real time, timers - see AGENTS.md: Testing).
 // Needs Chrome or Edge, like `npm run sim` (set SIM_CHROME if it isn't found).
 import fs from 'node:fs';
 import path from 'node:path';

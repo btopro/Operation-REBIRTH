@@ -66,7 +66,7 @@ for (const file of changes.keys()) {
 }
 
 if (problems.length) {
-  console.log(`check:docs - ${problems.length} new function(s)/class(es) without a /** doc block */ (CLAUDE.md: Docs rule):`);
+  console.log(`check:docs - ${problems.length} new function(s)/class(es) without a /** doc block */ (AGENTS.md: Docs rule):`);
   for (const p of problems) console.log('  ' + p);
   console.log('Add a short /** ... */ above each: what it does in game terms, its parameters if not obvious, what it returns.');
   process.exit(1);

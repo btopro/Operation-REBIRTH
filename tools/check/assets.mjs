@@ -1,7 +1,7 @@
 // Asset rules: checks every image, sound and video this change adds or edits (old files are left alone),
 // so new art arrives in a shape the build can optimize and players can load. Most optimizing happens on
 // its own in `npm run build` (palette PNGs, lossless WebP - tools/build/); these rules catch what it can't
-// fix by itself. The images/audio rules in CLAUDE.md say the same in words.
+// fix by itself. The images/audio rules in AGENTS.md say the same in words.
 //
 //   npm run check:assets            (CHECK_BASE=<ref> to compare with something other than origin/main)
 //   npm run check:assets -- --all   (check every file, old ones too - a report, never fails)
@@ -95,5 +95,5 @@ if (!hasFfprobe) warnings.push('(ffprobe not installed: audio bitrate and sample
 
 for (const w of warnings) console.log('  warning  ' + w);
 for (const e of errors) console.log('  error    ' + e);
-if (errors.length && !all) { console.log(`check:assets - ${errors.length} problem(s) in new or changed assets (CLAUDE.md: Assets rules)`); process.exit(1); }
+if (errors.length && !all) { console.log(`check:assets - ${errors.length} problem(s) in new or changed assets (AGENTS.md: Assets rules)`); process.exit(1); }
 console.log(`check:assets - ok (${files.filter((f) => /^(public|src)\//.test(f) && /\.(png|jpe?g|gif|webp|wav|ogg|mp3|mp4|webm)$/i.test(f)).length} asset file(s) checked${all ? ', report only' : ''})`);
