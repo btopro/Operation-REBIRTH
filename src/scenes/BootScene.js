@@ -162,8 +162,8 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('sfx_seen_scream', ['assets/audio/sfx/seen_scream.ogg', 'assets/audio/sfx/seen_scream.mp3']);   // LAST SEEN as SEEN: its SCREAM (cut from Mason's pixelated_audio_3)
     if(CHARACTER_SPEECH)this.load.audio('sfx_mail_voice', ['assets/audio/sfx/mail_voice.ogg', 'assets/audio/sfx/mail_voice.mp3']);
     this.load.spritesheet('item_heart_anim', SOUL_HEART.url, { frameWidth: SOUL_HEART.frame, frameHeight: SOUL_HEART.frame });
-    this.load.audio('fireball_charge', 'assets/audio/sfx/fireball_charge.wav');
-    this.load.audio('fireball_throw', 'assets/audio/sfx/fireball_throw.wav');
+    this.load.audio('fireball_charge', ['assets/audio/sfx/fireball_charge.ogg', 'assets/audio/sfx/fireball_charge.mp3']);
+    this.load.audio('fireball_throw', ['assets/audio/sfx/fireball_throw.ogg', 'assets/audio/sfx/fireball_throw.mp3']);
   }
   create() {
     initSfx(this);
