@@ -1,3 +1,5 @@
+import {FISTS} from './fists.js';
+import { YOUNG_LINK } from './youngLink.js';
 // Every fighter slot shown on the fighter select screen, in grid order.
 // Locked entries are placeholders for fighters still being made.
 import { SOUL_SUMMONER } from './soulSummoner.js';
@@ -7,6 +9,7 @@ import { NU } from './nu.js';
 import { AERO } from './aero.js';
 import { LAST_SEEN } from './lastSeen.js';
 import { WHAT_ONCE_WAS } from './whatOnceWas.js';
+import { PREMIUM_ANIMS } from './premiumAnimsData.js';
 import { skinTexture, skinInfo } from './skins.js';
 
 export const ROSTER = [
@@ -18,6 +21,9 @@ export const ROSTER = [
 // TEST FIGHTERS (Trinkets > TEST FIGHTERS): experimental fighters people can try in training or against a
 // CPU before they join the real roster. They never appear on the fighter select screen or as RANDOM.
 export const TEST_ROSTER = [
+  {id:'fists',name:'FISTS',def:FISTS,tag:'PROTOTYPE 06',notes:'A FAST HAND-TO-HAND BRAWLER.\nNATIVE SPRITES BY THESPRITEANIMATIONS.\n\nJ  PUNCH COMBO / TILTS / SMASHES\nAIR J  KICKS, FLIPS AND A METEOR DIVE\n\nK      FLURRY\nSIDE K BURNING DROPKICK\nUP K   RISING UPPERCUT\nDOWN K LOW SWEEP\n\nLIMIT  COMET COMBO\n1      VICTORY TAUNT\n\nEXTRACTED AND ALIGNED FROM YOUR SHEET.'},
+  { id: 'young-link', name: 'YOUNG LINK', def: YOUNG_LINK, tag: 'PROTOTYPE 05',
+    notes: 'A QUICK, LIGHT KOKIRI SWORD FIGHTER.\nNATIVE SPRITE ART BY GREGARLINK10.\n\nJ  SWORD COMBOS / TILTS / SMASHES\nAIR J  DIRECTIONAL SWORD ATTACKS\n\nK      HOOKSHOT - CATCH RIVALS / AIR LEDGES\nSIDE K HOLD TO CHARGE A FORWARD RUSH\nUP K   RISING SPIN - CARRIES THEN LAUNCHES\nDOWN K BOMB - THROW, BOUNCE, EXPLODE\n\nLIMIT  TRIFORCE SLASH\n1      TAUNT\n\nEXTRACTED FROM THE SUPPLIED SHEET.\nSHARED POSES COVER MOVES WITHOUT UNIQUE FRAMES.' },
   { id: 'nu', name: 'NU', def: NU, tag: 'PROTOTYPE 01',
     notes: 'A NU-METAL FRONTMAN WHO TURNS EVERY FIGHT INTO A SHOW.\n\n'
       + 'ON BEAT: ATTACK AS THE RING HITS HIS FEET FOR\n+25% DAMAGE. CHAIN THEM FOR A STREAK - 3+ = HYPED\n\n'
@@ -50,7 +56,9 @@ export function showFighter(sprite, def, frame = 0, skin = 0) {
   if (set && def.costumeSheets && def.costumeSheets[set]) key = def.costumeSheets[set].idle;
   if (def.menuSheets) key = set ? def.menuSheets[set] : skinTexture(sprite.scene, def.menuSheets.default, def.id, skin);   // headless sheets: show the one with the head
   if (skinInfo(def.id, skin).worn && def.wornSheets) key = def.wornSheets[Math.floor(sprite.scene.time.now / 1200) % 4].idle;   // preview every damage stage
-  frame %= (def.frameCounts && def.frameCounts.idle) || 32;     // idle strips differ in length
+  const premium=PREMIUM_ANIMS[def.id+':'+skinInfo(def.id,skin).name];
+  if(premium?.idleKey){key=premium.idleKey;frame=Math.floor(sprite.scene.time.now/(1000/60*premium.idle[2]))%premium.idle[1];}
+  else frame %= (def.frameCounts && def.frameCounts.idle) || 32;     // idle strips differ in length
   if (sprite.texture.key !== key) sprite.setTexture(key, frame); else sprite.setFrame(frame);
   sprite.setOrigin(def.originX ?? 0.5, def.originY).setFlipX(!!def.facesLeft);
   return sprite;

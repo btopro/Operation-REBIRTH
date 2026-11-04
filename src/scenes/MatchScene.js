@@ -1,3 +1,8 @@
+import {soulEncounter} from '../souls/encounters.js';
+import {soulPower,addSoulXP,applySoulAid} from '../souls/progression.js';
+import {awardSoul} from '../souls/collection.js';
+import {getSoulTeam,soulDamageMultiplier,soulShieldMultiplier,soulIncomingMultiplier} from '../souls/team.js';
+import {particleBudget} from '../performance.js';
 // The fight itself: runs the fixed 60 Hz simulation, resolves hits, KOs, the Limit cinematic,
 // match rules (Stock / Timed Battle / Stamina), camera and effects.
 import { hasWinCutscene } from './WinScene.js';
@@ -7,6 +12,7 @@ const SHOP_MUSIC = SHOP.find((t) => t.name === 'MUSIC').items;
 import { MatchExtras } from './matchExtras.js';
 import { slant, ARC } from '../ui/arcade.js';
 import { FighterIntros } from './fighterIntros.js';
+import { recordChallenge, CHALLENGE_REWARD } from '../challenges.js';
 import { recordMatch } from '../achievements.js';
 import { voiceLine } from '../audio/voiceLines.js';
 
@@ -52,18 +58,27 @@ import { Hud } from '../ui/hud.js';
 import { sfx } from '../audio/sfx.js';
 import { makeButton } from '../ui/button.js';
 import { addFullscreenButton } from '../ui/fullscreen.js';
+import { MenuInput } from './menuInput.js';
 import { Training, DummyController } from './training.js';
 import { TouchPad, TouchController, touchEnabled } from '../input/touch.js';
 
 export class MatchScene extends Phaser.Scene {
   constructor() { super('Match'); }
 
-  create() {
+  create(data={}) {
+    this.soulBattle=data.soulBattle&&soulEncounter(data.soulBattle.soulId)?data.soulBattle:null;this.soulEncounter=this.soulBattle?soulEncounter(this.soulBattle.soulId):null;this.resultSent=false;
+    this.sys.settings.data={};
+    this.shopPreview=data.shopPreview||null;
+    if(this.shopPreview)this.sys.settings.data={}; // consume preview data; later ordinary matches use player settings
     // demo: the title screen's background match (no players, no HUD, no sound of its own)
     // demoRequest.settings: a fixed all-CPU setup instead of a random one (used by tools/sim)
-    this.demo = demoRequest.next; demoRequest.next = false; this.demoTime = 0;
-    const S = this.demo ? (demoRequest.settings || demoSettings()) : settings; demoRequest.settings = null;
+    this.demo = !this.shopPreview && !this.soulBattle && demoRequest.next; demoRequest.next = false; this.demoTime = 0;
+    const S = this.soulBattle?.setup || this.shopPreview?.setup || (this.demo ? (demoRequest.settings || demoSettings()) : settings); demoRequest.settings = null;
     this.mode = S.mode;
+    this.challengeNotices = []; this.challengeNoticeAt = -180;
+    this.feedbackTimes = new Map();
+    // Resolve RANDOM choices once and capture only the match setup, not live volume/options.
+    this.rematchSetup = Object.fromEntries(['mode', 'dummy', 'stocks', 'minutes', 'hp', 'cpuCount', 'difficulty', 'items', 'hazards', 'stage', 'track', 'p1Pad', 'extraPads', 'cpuLevels', 'from'].map((key) => [key, Array.isArray(S[key]) ? [...S[key]] : S[key]]));
     this.bgList = []; this.worldList = []; this.uiList = [];
     this.cutscene = null;
     this.frame = 0; this.acc = 0; this.frozen = 0; this.paused = false; this.over = 0;
@@ -87,6 +102,7 @@ export class MatchScene extends Phaser.Scene {
     this.aeroStage = { k: 0, on: false, t: 0 };
     // stage music (stages without a track of their own play silence for now)
     if (this.demo) setSfxMuted(true);
+    else if (this.soulEncounter?.music) playMusic(this,this.soulEncounter.music,0.55);
     else if (this.pickedTrack()) { const tr = this.pickedTrack(); if (tr.musicList) playPlaylist(this, tr.musicList, 0.55); else playMusic(this, tr.music, 0.55); }   // picked on the stage select screen
     else if (equippedMusic()) playMusic(this, 'bgm_shop_' + equippedMusic().slice(4), 0.55);   // a track bought in the shop and switched on
     else if (this.stage.musicList) playPlaylist(this, this.stage.musicList, 0.55); else if (this.stage.music) playMusic(this, this.stage.music, 0.55); else stopMusic();
@@ -98,7 +114,7 @@ export class MatchScene extends Phaser.Scene {
     const humans = [];
     const kb = new KeyboardController(this);
     // player 1: keyboard, plus their controller and on-screen touch controls when present
-    this.touchPad = touchEnabled() && !this.demo ? new TouchPad(this, () => this.fighters[0]) : null;
+    this.touchPad = touchEnabled() && !this.demo && !this.shopPreview ? new TouchPad(this, () => this.fighters[0]) : null;
     const p1Parts = [kb];
     if (S.p1Pad !== null) p1Parts.push(new GamepadController(S.p1Pad));
     if (this.touchPad) p1Parts.push(new TouchController(this.touchPad));
@@ -109,7 +125,8 @@ export class MatchScene extends Phaser.Scene {
     const stocks = this.mode === 'stock' ? S.stocks : this.mode === 'stamina' ? 1 : 0;
     const defs = [];
     for (let i = 0; i < slots; i++) defs.push(fighterById(S.picks[i]).def);   // 'random' is decided here
-    const skins = resolveSkins(defs.map((d) => d.id), S.skins);
+    const skins = this.shopPreview ? S.skins : resolveSkins(defs.map((d) => d.id), S.skins);
+    if(this.soulEncounter)skins[1]=this.soulEncounter.skin||0;
     for (let i = 0; i < slots; i++) {
       const human = humans[i];
       const level = S.cpuLevels[i] ?? S.difficulty;
@@ -117,7 +134,10 @@ export class MatchScene extends Phaser.Scene {
       const label = human ? human.label : (this.isTraining ? 'DUMMY' : 'CPU') + (i + 1);
       const def = defs[i];
       const f = new Fighter(this, def, i, ctrl, { cpu: !human, label, stocks, hp: S.hp, skin: skins[i] });
+      f.soulTeam=i===0&&!this.demo&&!this.shopPreview?getSoulTeam():null;
+      if(i===0&&f.soulTeam?.main){const p=soulPower(f.soulTeam.main);f.soulPowerDamage=p?.damage||1;f.soulPowerTaken=p?.taken||1;}
       if (!human) ctrl.fighter = f;
+      if(this.soulEncounter&&!human){const e=this.soulEncounter;f.label=e.soul.name.toUpperCase();f.tag.setText(f.label);f.stocks=e.stocks;f.soulBattleDamage=e.damage;f.soulBattleTaken=e.taken;f.soulTeam=e.soul.kind==='main'?{main:e.soul.id,aids:[]}:{main:null,aids:[e.soul.id]};f.soulTint=e.tint||null;ctrl.soulStyle=e.style;ctrl.lv={...ctrl.lv,react:e.react,aggression:e.aggression,accuracy:.4+e.stars*.1,shieldChance:.05+e.stars*.1+(e.style==='guard'?0.15:0)};}
       const sp = this.stage.spawns[i];
       f.placeAt(sp.x, sp.y - 1); f.facing = sp.x < 0 ? 1 : -1;
       this.fighters.push(f);
@@ -133,7 +153,7 @@ export class MatchScene extends Phaser.Scene {
     this.overlay = this.add.graphics().setDepth(5); this.addUI(this.overlay);
     this.bigText = this.add.text(VIEW_W / 2, VIEW_H / 2 - 30, '', { fontFamily: FONT, fontSize: '28px', color: '#ffffff', stroke: '#0b0a14', strokeThickness: 6, align: 'center' }).setOrigin(0.5);
     this.smallText = this.add.text(VIEW_W / 2, VIEW_H / 2 + 10, '', { fontFamily: FONT, fontSize: '8px', color: '#c9c4dc', stroke: '#0b0a14', strokeThickness: 4, align: 'center', lineSpacing: 6 }).setOrigin(0.5);
-    this.modeText = this.add.text(12, 8, MODE_NAMES[this.mode], { fontFamily: FONT, fontSize: '7px', color: '#ffffff', stroke: '#07060e', strokeThickness: 3 }).setDepth(6);
+    this.modeText = this.add.text(12, 8, this.soulEncounter?'SOUL BATTLE / '+this.soulEncounter.soul.name.toUpperCase()+' / '+this.soulEncounter.stars+' STARS':MODE_NAMES[this.mode], { fontFamily: FONT, fontSize: '7px', color: '#ffffff', stroke: '#07060e', strokeThickness: 3 }).setDepth(6);
     this.modeChip = this.add.graphics().setDepth(5.5); slant(this.modeChip, 4, 5, this.modeText.width + 18, 14, 0x000000, 0.55, 5); slant(this.modeChip, 4, 5, 4, 14, ARC.sections.title, 1, 5); this.addUI(this.modeChip);
     this.bigText.setDepth(20); this.smallText.setDepth(20); this.addUI(this.bigText, this.smallText, this.modeText);
     if (S.crt) this.makeCrt();
@@ -154,13 +174,23 @@ export class MatchScene extends Phaser.Scene {
       this.uiCam.setVisible(false); this.input.enabled = false;
       for (const f of this.fighters) f.tag.setAlpha(0);
     }
+    if(this.shopPreview){
+      this.previewTicks=0;this.previewMenu=new MenuInput(this);this.previewClicked=false;
+      this.input.on('pointerdown',()=>{this.previewClicked=true;});
+      const f=this.fighters[0];f.placeAt(0,-1);f.setState('idle');f.grounded=true;f.platform=this.stage.platforms[0];
+      this.intros?.cleanup();this.intros=new FighterIntros(this);
+      for(const o of this.uiList)o.setVisible(false);
+      this.previewTitle=this.add.text(320,18,this.shopPreview.name+' — INTRO',{fontFamily:FONT,fontSize:'10px',color:'#ffffff',stroke:'#0b0a14',strokeThickness:4}).setOrigin(.5).setScrollFactor(0).setDepth(50);
+      this.previewHelp=this.add.text(320,346,'ENTER / ESC / A / B OR CLICK TO RETURN TO SHOP',{fontFamily:FONT,fontSize:'6px',color:'#ffffff',stroke:'#0b0a14',strokeThickness:3}).setOrigin(.5).setScrollFactor(0).setDepth(50);
+      this.addUI(this.previewTitle,this.previewHelp);
+    }
     this.events.once('shutdown', () => this.cleanup());
   }
 
   // ---- camera bookkeeping: every object belongs to exactly one camera
   addBg(...objs) { for (const o of objs) { this.worldCam.ignore(o); this.uiCam.ignore(o); this.bgList.push(o); } }
   addWorld(...objs) { for (const o of objs) { this.bgCam.ignore(o); this.uiCam.ignore(o); } }
-  addUI(...objs) { for (const o of objs) { this.bgCam.ignore(o); this.worldCam.ignore(o); if (o.plate) { this.bgCam.ignore(o.plate); this.worldCam.ignore(o.plate); } } }   // (a button's plate goes with it)
+  addUI(...objs) { for (const o of objs) { this.uiList.push(o); if(o.plate)this.uiList.push(o.plate); this.bgCam.ignore(o); this.worldCam.ignore(o); if (o.plate) { this.bgCam.ignore(o.plate); this.worldCam.ignore(o.plate); } } }   // (a button's plate goes with it)
   sfxVol() { return this.demo ? 0 : settings.sfxVolume; }
   // the track picked on the stage select screen (null = AUTO: the stage's own, or the shop track switched on)
   pickedTrack() {
@@ -181,6 +211,15 @@ export class MatchScene extends Phaser.Scene {
 
   // ------------------------------------------------------------------ main loop
   update(time, delta) {
+    if(this.shopPreview){
+      const input=this.previewMenu.poll();
+      if((this.previewTicks>12&&(input.ok||input.back||input.pads.some(p=>p.button==='a'||p.button==='b')||this.previewClicked))||this.previewTicks>=155){this.scene.stop();this.scene.wake('Shop');return;}
+      this.previewClicked=false;this.acc+=Math.min(delta,100);
+      while(this.acc>=STEP_MS){this.acc-=STEP_MS;this.previewTicks++;this.frame++;this.intros.step();}
+      this.draw();
+      for(const o of this.uiList)if(o!==this.previewTitle&&o!==this.previewHelp)o.setVisible(false);
+      return;
+    }
     if (this.demo) {                                  // title demo: a new random match every 25 s, or when one ends
       this.demoTime += delta;
       if (this.demoTime > 25000 || this.over === 1) { demoRequest.next = true; this.scene.restart(); return; }
@@ -215,7 +254,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.paused) {
       let quit = Phaser.Input.Keyboard.JustDown(this.qKey) || this.mouseQuit;
       for (const i of pads) { const pad = readPad(i); if (pad && pad.buttons[8] && pad.buttons[8].pressed) quit = true; }
-      if (quit) { this.scene.start(settings.from || 'Setup'); return true; }   // back to wherever the match was started from
+      if (quit) { this.scene.start(this.soulBattle?'SoulBoard':settings.from || 'Setup'); return true; }   // back to wherever the match was started from
       this.draw();
     }
     return this.paused;
@@ -284,12 +323,16 @@ export class MatchScene extends Phaser.Scene {
       for (const t of this.fighters) {
         if (!t.alive || t === hb.owner) continue;
         if (hb.owner && t.team === hb.owner.team) continue;
-        if (t.isIntangible() || t.state === 'grabbed' || t.state === 'seized') continue;
+        if (t.isIntangible()) {
+          if (['roll', 'spotdodge', 'airdodge'].includes(t.state) && !t.invincible && !t.star && overlap(hb, t.hurtbox())) this.combatCue(t, 'dodge');
+          continue;
+        }
+        if (t.state === 'grabbed' || t.state === 'seized') continue;
         const key = hb.id + ':' + t.slot;
         if (this.hits.has(key)) continue;
         if (!overlap(hb, t.hurtbox())) continue;
         this.hits.add(key);
-        if (hb.grab) { if (hb.owner.state === 'attack' && t.grounded) hb.owner.onGrab(t); continue; }
+        if (hb.grab) { if (hb.owner.state === 'attack' && (t.grounded || hb.src?.grabAir)) hb.owner.onGrab(t); continue; }
         if (t.counterReady && t.counterReady() && !hb.hazard && !hb.pillar) {   // countered: no damage, she strikes back
           t.counterHit(hb);
           if (hb.projectile) hb.projectile.kill();             // (a thrown sword bounces back to its owner instead)
@@ -318,7 +361,7 @@ export class MatchScene extends Phaser.Scene {
 
   shieldHit(t, hb) {
     const dmg = hb.h.dmg || 5;
-    t.shieldHp -= dmg * 1.3;
+    t.shieldHp -= dmg * 1.3 * soulShieldMultiplier(t);
     t.shieldStun = 4 + Math.floor(dmg / 2);
     const dir = Math.sign(t.x - (hb.owner ? hb.owner.x : (hb.x1 + hb.x2) / 2)) || 1;
     t.lx = dir * (1 + dmg * 0.15);
@@ -327,22 +370,23 @@ export class MatchScene extends Phaser.Scene {
     sfx('shield', 0.6, 0.8);
     this.puff(t.x + (hb.owner ? -dir * 14 : 0), t.y - 26, 0xffffff, 5);
     if (t.shieldHp <= 0) t.breakShield();
+    else if (t.shieldHp <= 15) this.combatCue(t, 'low');
   }
 
   applyHit(t, hb, srcX) {
     const h = hb.h, owner = hb.owner;
     const beat = owner && owner.def.beat ? owner.beatBonus(hb) : null;        // NU: an attack started on the beat
     if (t.def.beat) t.dropStreak();
-    const dmg = Math.max(1, Math.round((h.dmg || 0) * (owner ? owner.dmgMult : 1) * t.dmgTakenMult * (beat ? beat.dmg : 1)));
+    const dmg = Math.max(1, Math.round((h.dmg || 0) * (owner ? owner.dmgMult : 1) * t.dmgTakenMult * (beat ? beat.dmg : 1) * soulDamageMultiplier(hb) * soulIncomingMultiplier(t,hb)));
     if (beat) owner.beatLanded(t, hb);
     if (owner && !hb.projectile && owner.state === 'attack' && owner.move && owner.move.dive && owner.move.dive.bounce) owner.diveBounce = true;
     if (owner && !hb.projectile && owner.state === 'attack' && owner.move && owner.move.cling && t.alive) owner.startCling(t);
     if (owner && !hb.projectile && owner.state === 'attack' && owner.move && owner.move.flurry && t.alive) owner.startFlurry(t);   // SEEN's LUNGE hit: the flurry   // LAST SEEN: she clings on   // NU's Stage Dive: bounce off them
     let kbPct;
     if (this.mode === 'stamina') { t.hp -= dmg; kbPct = 40 + 50 * (1 - Math.max(0, t.hp) / t.maxHp); }
-    else { t.percent = Math.min(999, t.percent + dmg); kbPct = t.percent; }
+    else { t.percent = Math.min(999, t.percent + dmg); kbPct = t.percent;if(applySoulAid(t))this.popText(t,'HEAL -'+t.soulHealAmount+'%','#7dffc4'); }
     if (t.state !== 'limit') t.limit = Math.min(LIMIT_MAX, t.limit + dmg);
-    t.stats.damageTaken += dmg; if (owner) owner.stats.damageDealt += dmg;
+    t.stats.damageTaken += dmg; if (owner) { owner.stats.damageDealt += dmg; this.challengeEvent(owner, 'hit'); }
     if (owner && owner.def.signal) owner.addSignal(dmg * owner.def.signal.perDealt);   // WHAT ONCE WAS's SIGNAL meter
     if (t.def.signal) t.addSignal(dmg * t.def.signal.perTaken);
     if (owner && owner.def.sightings) owner.addSightings(dmg * owner.def.sightings.perDealt);   // LAST SEEN's SIGHTINGS meter
@@ -370,6 +414,7 @@ export class MatchScene extends Phaser.Scene {
       t.lx = o.vx + (o.x - t.x) * 0.12; t.ly = Math.min(o.vy, -1) + (o.y - 10 - t.y) * 0.08;
       t.grounded = false; t.platform = null;
     }
+    t.youngLinkJuggle=h.juggle&&hb.owner?{owner:hb.owner,side:Math.sign(t.x-hb.owner.x)||1}:null;
     t.hitstun = h.stun || Math.max(8, Math.floor(kb * PHYS.hitstunPerKb));
     const comboing = t.state === 'hitstun' || t.state === 'grabbed';
     t.setState('hitstun'); t.hurtAnim = 16;      // the Take Hit animation plays out in full
@@ -448,6 +493,10 @@ export class MatchScene extends Phaser.Scene {
   }
 
   toResults() {
+    if(this.resultSent)return;this.resultSent=true;
+    this.rematchSetup.stage = this.stageId;
+    this.rematchSetup.picks = this.fighters.map((f) => (f.baseDef || f.def).id);
+    this.rematchSetup.skins = this.fighters.map((f) => f.skin);
     let order;
     if (this.mode === 'time') order = [...this.fighters].sort((a, b) => (b.kos - b.falls) - (a.kos - a.falls) || a.percent - b.percent);
     else order = [...this.fighters].sort((a, b) => (b.eliminated ? 0 : 1) - (a.eliminated ? 0 : 1) || b.stocks - a.stocks || (b.eliminatedAt || 0) - (a.eliminatedAt || 0));
@@ -456,7 +505,9 @@ export class MatchScene extends Phaser.Scene {
     const coins = this.isTraining || this.demo ? [] : order.map((f, place) => (f.isCpu ? null : { label: f.label, slot: f.slot, coins: matchCoins(place, f.kos) })).filter(Boolean);
     const earned = coins.reduce((n, c) => n + c.coins, 0); if (earned) addCoins(earned);
     if (!this.isTraining && !this.demo) for (const f of order) if (!f.isCpu) recordMatch({ fighter: f.baseDef ? f.baseDef.id : f.def.id, stage: this.stageId, won: f === order[0], flawless: this.mode === 'stock' && !f.falls });   // lifetime stats (achievements.js)
-    const data = { results, mode: this.mode, unlocks: this.unlocks, coins, total: getCoins() };
+    const soulXP=!this.isTraining&&!this.demo&&!this.shopPreview?addSoulXP(this.fighters[0].soulTeam?.main,order[0].slot===0?100:50):null;
+    const data = { soulXP, results, rematch: this.rematchSetup, mode: this.mode, unlocks: this.unlocks, coins, total: getCoins() };
+    if(this.soulBattle){const won=order[0].slot===0&&!order[0].eliminated&&this.fighters[1].eliminated;data.soulBattle=this.soulBattle;data.soulWon=won;data.soulEarned=won?awardSoul(this.soulBattle.soulId):false;return this.scene.start(data.soulEarned?'SoulReward':'Results',data);}
     if (hasWinCutscene(results[0].fighter) && !this.isTraining) return this.scene.start('Win', data);   // Soul Summoner, Mr Wake, Lacy: a win cutscene first (WinScene.js)
     this.scene.start('Results', data);
   }
@@ -465,7 +516,7 @@ export class MatchScene extends Phaser.Scene {
   spawnFireball(owner, k) { const p = new Fireball(this, owner, k); this.projectiles.push(p); return p; }
   spawnPool(owner, spec) {
     for (const p of this.pools) if (p.owner === owner) p.kill();          // one puddle per Mr Wake
-    const p = new ShadowPool(this, owner, spec); if (p.alive) this.pools.push(p); return p;
+    const p = new ShadowPool(this, owner, spec); if (p.alive) { this.pools.push(p); this.challengeEvent(owner, 'pool'); } return p;
   }
   spawnOrb(owner, spec) { const p = new VoidOrb(this, owner, spec); this.projectiles.push(p); return p; }
   spawnSword(owner, spec) { const p = new ThrownSword(this, owner, spec); this.projectiles.push(p); return p; }
@@ -492,7 +543,7 @@ export class MatchScene extends Phaser.Scene {
     for (const p of this.pools) if (p.owner === owner && p instanceof CdCloud) p.kill();   // one cloud at a time
     const p = new CdCloud(this, owner, spec); this.pools.push(p); return p;
   }
-  spawnSoul(owner) { const s = new Soul(this, owner); this.souls.push(s); return s; }
+  spawnSoul(owner) { this.challengeEvent(owner, 'summon'); const s = new Soul(this, owner); this.souls.push(s); return s; }
   // WHAT ONCE WAS: its MISSING poster (one in the air at a time) and its door (one each)
   spawnShell(owner, spec) { const p = new TankShell(this, owner, spec); this.projectiles.push(p); return p; }
   spawnPoster(owner, spec) { const p = new MissingPoster(this, owner, spec); this.projectiles.push(p); return p; }
@@ -504,7 +555,7 @@ export class MatchScene extends Phaser.Scene {
 
   startLimit(f) {
     this.frozen = 34;
-    sfx('limit', 1);
+    sfx(f.def.limit.type === 'spirits' ? 'phantomOrgan' : 'limit', 1);
     if (f.style === 'samurai') { sfx('taiko', 1); sfx('shing', 0.7, 0.9); }
     if (f.style === 'onebit') sfx('glitch', 0.8, 0.8);
     if (f.style === 'rose') sfx('petal', 0.8, 0.7);
@@ -558,6 +609,9 @@ export class MatchScene extends Phaser.Scene {
     const n = v.n + Math.floor(kb / 2);
     const add = (o) => P.push({ size: 2, grav: 0.08, ...o });
     switch (v.shape) {
+      case 'leaf': case 'alchemy':
+        for(let i=0;i<n;i++){const a=R()*Math.PI*2,sp=1+R()*2.5;add({shape:v.shape,x,y,vx:Math.cos(a)*sp+dir*.5,vy:Math.sin(a)*sp-1.2,life:28+R()*18,color:col(i),grav:v.shape==='leaf'?.035:.09,drag:.94,sway:R()*6});}
+        break;
       case 'paper':                                   // HOMEROOM: notebook paper scraps and chalk dust; big hits fold a paper airplane
         for (let i = 0; i < n; i++) { const a = -Math.PI / 2 + (R() - 0.5) * 2.8, sp = 1.4 + R() * 2.6; add({ shape: 'paper', x, y, vx: Math.cos(a) * sp + dir * 0.6, vy: Math.sin(a) * sp, life: 34 + R() * 16, color: col(i), ang: R() * 6, spin: (R() - 0.5) * 0.3, drag: 0.94, grav: 0.05, sway: R() * 6 }); }
         for (let i = 0; i < 6; i++) add({ x: x + (R() - 0.5) * 14, y: y + (R() - 0.5) * 10, vx: (R() - 0.5) * 1.2, vy: -R(), life: 16 + R() * 10, color: 0xf4f4f0, size: 1 + (R() < 0.3), grav: 0, drag: 0.92 });
@@ -625,6 +679,8 @@ export class MatchScene extends Phaser.Scene {
   drawParticle(g, p) {
     const a = Math.min(1, p.life / 10), X = Math.round(p.x), Y = Math.round(p.y);
     switch (p.shape) {
+      case 'leaf': g.fillStyle(p.color,a);g.fillRect(X-2,Y,4,1);g.fillRect(X-1,Y-1,3,1);g.fillRect(X-1,Y+1,2,1);g.fillStyle(0xeaf5bb,a*.7);g.fillRect(X,Y,1,1);break;
+      case 'alchemy': g.fillStyle(p.color,a*.4);g.fillRect(X-2,Y-1,5,3);g.fillStyle(p.color,a);g.fillRect(X-1,Y-2,3,5);g.fillStyle(0xf1ffd3,a*.7);g.fillRect(X-1,Y-1,1,1);break;
       case 'win95': drawMiniWindow(g, X - 4, Y - 3, 9, 7, a, p.color); break;
       case 'paper': {                                 // a scrap of lined notebook paper, fluttering
         p.ang = (p.ang || 0) + (p.spin || 0.2); const w = Math.max(1, Math.round(Math.abs(Math.cos(p.ang)) * 4));
@@ -892,6 +948,27 @@ export class MatchScene extends Phaser.Scene {
     a.setPosition(x, y - 3).setAlpha(k); b.setPosition(x + bw, y - 3).setAlpha(k);
   }
 
+  challengeEvent(f, event) {
+    const completed = recordChallenge((f.baseDef || f.def).id, event, { cpu: f.isCpu, demo: this.demo });
+    for (const c of completed) this.challengeNotices.push({ f, c });
+  }
+
+  combatCue(f, kind) {
+    if (this.demo) return;
+    const spec = {
+      low: ['SHIELD LOW!', '#ff8a72', 0xff8a72, 'warn', 180],
+      dodge: ['DODGED!', '#9ff0ff', 0x9ff0ff, 'dodge', 90],
+      break: ['SHIELD BREAK!', '#ffd34f', 0xffd34f, 'glass', 60],
+      ready: ['LIMIT READY!', '#78a0c6', 0x78a0c6, 'limitready', 60],
+    }[kind];
+    const key = f.slot + ':' + kind;
+    if (!spec || this.frame - (this.feedbackTimes.get(key) ?? -999) < spec[4]) return;
+    this.feedbackTimes.set(key, this.frame);
+    this.popText(f, spec[0], spec[1]);
+    this.puff(f.x, f.y - 28, spec[2], kind === 'break' ? 16 : 7);
+    sfx(spec[3], kind === 'dodge' ? 0.3 : 0.7, kind === 'break' ? 0.7 : 1.2);
+  }
+
   popText(f, text, color) {
     const t = this.add.text(f.x, f.y - 70, text, { fontFamily: FONT, fontSize: '8px', color, stroke: '#0b0a14', strokeThickness: 4 }).setOrigin(0.5);
     this.addWorld(t);
@@ -900,12 +977,18 @@ export class MatchScene extends Phaser.Scene {
   shake(amount, frames) { this.shakeAmt = Math.max(this.shakeAmt, amount); this.shakeTime = Math.max(this.shakeTime, frames); }
 
   stepEffects() {
+    if (this.challengeNotices.length && this.frame - this.challengeNoticeAt >= 150) {
+      const { f, c } = this.challengeNotices.shift();
+      this.popText(f, c.name + '  +' + CHALLENGE_REWARD + ' COINS', '#7aff8a');
+      sfx('ding', 0.5, 1.5); this.challengeNoticeAt = this.frame;
+    }
+    const budget=particleBudget();if(this.particles.length>budget)this.particles.splice(0,this.particles.length-budget);
     for (const p of this.particles) {
       p.x += p.vx + (p.sway ? Math.sin((p.life + p.sway) * 0.2) * 0.3 : 0); p.y += p.vy; p.vy += p.grav ?? 0.08; p.life--;
       if (p.drag) { p.vx *= p.drag; p.vy *= p.drag; }
     }
     this.particles = this.particles.filter((p) => p.life > 0);
-    if (this.particles.length > 600) this.particles.splice(0, this.particles.length - 600);
+    if (this.particles.length > budget) this.particles.splice(0, this.particles.length - budget);
     for (const lh of this.limitHits) lh.t++;
     this.limitHits = this.limitHits.filter((lh) => lh.t < 3);
     for (const p of this.pops) { p.life--; p.t.y -= 0.4; p.t.setAlpha(Math.min(1, p.life / 20)); if (p.life <= 0) p.t.destroy(); }
@@ -988,7 +1071,8 @@ export class MatchScene extends Phaser.Scene {
       // bright burst at the hand
       g.fillStyle(C.core, fade); g.fillRect(b.hx - 10, b.hy - 14, 20, 28);
     }
-    for (const p of this.particles) this.drawParticle(g, p);
+    const particleStart=Math.max(0,this.particles.length-particleBudget());
+    for(let i=particleStart;i<this.particles.length;i++)this.drawParticle(g,this.particles[i]);
     if (this.training) this.training.draw(g);
 
     // Limit banner and darkening

@@ -1,0 +1,38 @@
+import { createServer } from 'vite';
+import { chromium } from 'playwright-core';
+import { readFileSync,mkdirSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const server=await createServer({server:{host:'127.0.0.1',port:0},logLevel:'silent'});await server.listen();const url=server.resolvedUrls.local[0];
+const browser=await chromium.launch({executablePath:process.env.SIM_CHROME||'/usr/bin/chromium',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage','--mute-audio','--no-sandbox']});
+try{
+ const page=await browser.newPage({viewport:{width:844,height:390},isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36'});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.route('**/*',r=>{const u=r.request().url();if(u.includes('/npm/phaser@'))return r.fulfill({body:readFileSync('node_modules/phaser/dist/phaser.min.js'),contentType:'application/javascript'});return u.startsWith(url)?r.continue():r.abort();});
+ await page.goto(url);await page.waitForFunction(()=>window.game?.scene?.isActive('Title'),null,{timeout:120000});
+
+
+ const open=await page.evaluate(async()=>{for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);window.game.scene.start('Trinkets');await new Promise(r=>setTimeout(r,120));const t=window.game.scene.getScene('Trinkets');const i=t.list.entries.findIndex(e=>e.scene==='SoulBoard');if(i<0)throw Error('Soul Board missing from Trinkets');return i;});
+ await page.waitForFunction(()=>window.game.scene.getScene('Trinkets').menu.started);await page.keyboard.press('Enter',{delay:80});await page.waitForFunction(()=>window.game.scene.isActive('SoulBoard'));
+
+ const initial=await page.evaluate(()=>{const s=window.game.scene.getScene('SoulBoard');if(s.cards.length!==8||s.visibleSouls.length!==8||s.filters)throw Error('Expected eight shared slots with eight live souls');if(!s.teamButton.visible)throw Error('Team Select missing at top');for(const soul of s.visibleSouls){s.select(s.visibleSouls.indexOf(soul));if(!s.detailStats.text.includes(({4:'DREAD',1:'WISP',5:'ETERNAL',3:'VENGEFUL',2:'RESTLESS'})[soul.stars]))throw Error('Wrong tier');if(soul.kind==='main'&&!s.detailBody.text.includes(soul.aidSlots+' AID SLOTS'))throw Error('Main capacity missing');}for(const c of s.cards){if(c.portrait.visible&&c.portrait.displayHeight<70)throw Error('Portraits too small');if(c.y+122>315)throw Error('Cards clipped');}return {slots:8,souls:s.visibleSouls.map(s=>s.name)};});
+ await page.waitForTimeout(80);await page.screenshot({path:'/workspace/work/soul-board-first-three.png'});
+ await page.keyboard.press('t',{delay:80});await page.waitForFunction(()=>window.game.scene.isActive('SoulTeam'));
+ const teams=await page.evaluate(async()=>{
+  const {awardSoul}=await import('/src/souls/collection.js');['bill-cipher','cloud','steve'].forEach(awardSoul);const s=window.game.scene.getScene('SoulTeam'),{getSoulTeam,setMainSoul}=await import('/src/souls/team.js');
+  for(const [id,slots]of [['bill-cipher',3],['cloud',2],['steve',3]]){s.chooseSlot(0);s.sel=s.choices.findIndex(x=>x.id===id);s.equip();if(getSoulTeam().main!==id||!s.slots[0].name.text.includes(id==='bill-cipher'?'BILL CIPHER':id.toUpperCase()))throw Error('Main equip failed');if(s.slots[3].labels.text.includes('LOCKED')!==(slots<3))throw Error('Aid capacity did not update');}
+  s.chooseSlot(1);if(!s.detail.text.includes('NO AID SOULS ADDED'))throw Error('Aid empty state missing');s.chooseSlot(0);s.sel=s.choices.findIndex(x=>x.id==='cloud');s.equip();
+  for(const o of [s.detail,s.feedback,s.heading,...s.slots.flatMap(x=>[x.labels,x.name])]){const b=o.getBounds();if(b.left<0||b.right>640||b.bottom>336)throw Error('Team UI clipped: '+o.text);}
+  return getSoulTeam();});
+ await page.waitForTimeout(80);await page.screenshot({path:'/workspace/work/soul-team-cloud.png'});
+ await page.reload();await page.waitForFunction(()=>window.game?.scene?.isActive('Title'),null,{timeout:120000});
+ const damage=await page.evaluate(async()=>{
+  const {getSoulTeam,setMainSoul}=await import('/src/souls/team.js'),{settings}=await import('/src/settings.js'),{MatchScene}=await import('/src/scenes/MatchScene.js');if(getSoulTeam().main!=='cloud')throw Error('Team did not survive reload');MatchScene.prototype.update=function(){};
+  const run=async(main,fighter,attack,override)=>{setMainSoul(main);for(const active of window.game.scene.getScenes(true))window.game.scene.stop(active.scene.key);Object.assign(settings,{mode:'stock',stocks:3,picks:[fighter,'hero-knight'],skins:[0,0],cpuCount:1,p1Pad:null,extraPads:[],stage:'gravemoon-bridge',items:false,hazards:false,crt:false});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,120));const m=window.game.scene.getScene('Match'),f=m.fighters[0],v=m.fighters[1];m.countdown=0;m.intros=null;f.startAttack(attack);const h={...f.def.moves[attack].hits[0],...override};m.applyHit(v,{owner:f,h,facing:1,id:'soul-test-'+main},f.x);if(v.soulTeam)throw Error('Player team leaked to CPU');return v.percent;};
+  const sword=await run('cloud','hero-knight','jab',{dmg:20}),psychic=await run('bill-cipher','soul-summoner','sideB',{dmg:20}),fire=await run('bill-cipher','soul-summoner','jab',{dmg:20,damageType:'fire'}),none=await run('steve','hero-knight','jab',{dmg:20});
+  if(sword!==24||psychic!==28||fire!==23||none!==21)throw Error('Incorrect category bonus: '+JSON.stringify({sword,psychic,fire,none}));setMainSoul(null);return {sword,psychic,fire,none};});
+ const pos=await page.evaluate(async()=>{for(const active of window.game.scene.getScenes(true))window.game.scene.stop(active.scene.key);window.game.scene.start('SoulBoard');await new Promise(r=>setTimeout(r,150));const r=window.game.canvas.getBoundingClientRect();const b=window.game.scene.getScene('SoulBoard').teamButton.getBounds();return {x:r.x+b.centerX/640*r.width,y:r.y+b.centerY/360*r.height};});await page.waitForTimeout(100);await page.screenshot({path:'/workspace/work/soul-board-cards.png'});await page.touchscreen.tap(pos.x,pos.y);await page.waitForFunction(()=>window.game.scene.isActive('SoulTeam'));
+ await page.evaluate(()=>window.game.scene.getScene('SoulTeam').back());await page.waitForFunction(()=>window.game.scene.isActive('SoulBoard'));
+ const cardPoint=async id=>page.evaluate(async id=>{const s=window.game.scene.getScene('SoulBoard');let index=s.visibleSouls.findIndex(s=>s.id===id);if(index<0){const {getSoulBoard,SOUL_CYCLE_MS}=await import('/src/souls/board.js');for(let k=0;k<26&&index<0;k++){s.board=getSoulBoard(Date.now()+k*SOUL_CYCLE_MS);s.refresh();index=s.visibleSouls.findIndex(s=>s.id===id);}}const c=s.cards[index],r=window.game.canvas.getBoundingClientRect();return {x:r.x+(c.x+71)/640*r.width,y:r.y+(c.y+60)/360*r.height};},id);
+ const cleared=await cardPoint('cloud');await page.touchscreen.tap(cleared.x,cleared.y);await page.waitForFunction(()=>window.game.scene.isActive('SoulBattle'));await page.evaluate(()=>window.game.scene.getScene('SoulBattle').scene.start('SoulBoard'));await page.waitForFunction(()=>window.game.scene.isActive('SoulBoard'));
+ const target=await cardPoint('shadow-young-link');await page.touchscreen.tap(target.x,target.y);await page.waitForFunction(()=>window.game.scene.isActive('SoulBattle'));assert.equal(await page.evaluate(()=>window.game.scene.getScene('SoulBattle').soulId),'shadow-young-link');
+ assert.deepEqual(errors,[]);console.log('PASS',JSON.stringify({initial,teams,damage,touchTeamSelect:true}));
+}finally{await browser.close();await server.close();}

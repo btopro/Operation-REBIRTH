@@ -1,3 +1,6 @@
+import {lowEffects} from '../performance.js';
+import {ROSTER,showFighter} from '../fighters/roster.js';
+import {ArcadeBg} from '../ui/arcade.js';
 // Title screen: the game's logo over a live demo - CPU bots fighting it out on a random stage with
 // random fighters (MatchScene in demo mode, running underneath this scene). REBIRTH flashes through the
 // rainbow, letter by letter.
@@ -17,7 +20,9 @@ export class TitleScene extends Phaser.Scene {
     this.t = 0;
     playMusic(this, 'bgm_title');
     // the demo match plays behind the title
-    if (!this.scene.isActive('Match')) { demoRequest.next = true; this.scene.launch('Match'); }
+    this.lightTitle=lowEffects();
+    if(this.lightTitle){this.lightBg=new ArcadeBg(this,ARC.sections.title);this.lightFighters=ROSTER.filter(r=>r.available).slice(0,3).map((r,i)=>({def:r.def,s:this.add.sprite(160+i*160,260,r.def.sheets.idle,0).setScale(1.5)}));}
+    if (!this.lightTitle && !this.scene.isActive('Match')) { demoRequest.next = true; this.scene.launch('Match'); }
     this.scene.bringToTop();
 
     // shade the top and bottom so the logo and prompts read over the action
@@ -48,7 +53,8 @@ export class TitleScene extends Phaser.Scene {
   update() {
     this.t++;
     // rapid rainbow: every letter races around the colour wheel, each a step ahead of the last
-    this.letters.forEach((l, i) => {
+    if(this.lightTitle){this.lightBg.update(this.t);this.lightFighters.forEach(({s,def})=>showFighter(s,def,Math.floor(this.t/6)));}
+    if(!this.lightTitle||this.t%3===0)this.letters.forEach((l, i) => {
       const hue = ((this.t * 14 + i * 38) % 360) / 360;
       const c = Phaser.Display.Color.HSVToRGB(hue, 0.85, 1);
       l.setColor(Phaser.Display.Color.RGBToString(c.r, c.g, c.b));

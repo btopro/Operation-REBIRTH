@@ -26,27 +26,31 @@ export const CURRENCY = { name: 'COINS', color: 0xf3c358 };
 // whole shop takes a few hundred.
 export const SHOP = [
   { name: 'COSTUMES', items: [
-    { id: 'cos-eclipse', kind: 'costume', fighter: 'soul-summoner', skin: 'ECLIPSE', name: 'ECLIPSE', price: 1500, info: 'SOUL SUMMONER. ARMOUR BLACK AS A DEAD SUN, A FLAME LIKE ITS CORONA. HITS THROW STARS.' },
-    { id: 'cos-aurora', kind: 'costume', fighter: 'soul-summoner', skin: 'AURORA', name: 'AURORA', price: 1100, info: 'SOUL SUMMONER. NORTHERN LIGHTS: A TEAL CAPE AND A MAGENTA FLAME, WISPS ORBITING HIM.' },
-    { id: 'cos-vampire', kind: 'costume', fighter: 'mr-wake', skin: 'VAMPIRE', name: 'VAMPIRE', price: 1300, info: 'MR WAKE. A MIDNIGHT COUNT IN BLACK AND CRIMSON. HIS HITS SCATTER BATS.' },
-    { id: 'cos-sakura', kind: 'costume', fighter: 'mr-wake', skin: 'SAKURA', name: 'SAKURA', price: 1000, info: 'MR WAKE. CHERRY-BLOSSOM ROBES. PETALS FALL WHEREVER HE HITS.' },
-    { id: 'cos-obsidian', kind: 'costume', fighter: 'hero-knight', skin: 'OBSIDIAN', name: 'OBSIDIAN', price: 1300, info: 'LACY. VOLCANIC GLASS ARMOUR WITH LAVA IN THE CRACKS. HITS BURST INTO FLAME.' },
-    { id: 'cos-cyber', kind: 'costume', fighter: 'hero-knight', skin: 'CYBERBLADE', name: 'CYBERBLADE', price: 1400, info: 'LACY. CHROME AND NEON. HER HITS GLITCH INTO PIXELS.' },
-    { id: 'cos-celestial', kind: 'costume', fighter: 'soul-summoner', skin: 'CELESTIAL', name: 'CELESTIAL', price: 1600, info: 'SOUL SUMMONER. A CAPE FULL OF STARS, SILVER ARMOUR, A CRESCENT MOON RISING BEHIND HIS CROWN. TWO LITTLE MOONS ORBIT HIM.' },
-    { id: 'cos-plague', kind: 'costume', fighter: 'mr-wake', skin: 'PLAGUE DOCTOR', name: 'PLAGUE DOCTOR', price: 1400, info: 'MR WAKE. A BEAKED MASK, GREEN-GLASS GOGGLES, A LANTERN OF SICKLY FIRE ON HIS STAFF. HITS PUFF OUT MIASMA.' },
-    { id: 'cos-verdant', kind: 'costume', fighter: 'hero-knight', skin: 'WILDWOOD', name: 'WILDWOOD', price: 1300, info: 'LACY. ARMOUR OF LIVING BARK AND MOSS, LEAVES GROWING FROM HER HELMET, A BLADE OF GLOWING GREEN WOOD.' },
-    { id: 'cos-glam', kind: 'costume', fighter: 'nu', skin: 'GLAM', name: 'GLAM', price: 1000, info: 'NU (TEST FIGHTER). PLATINUM HAIR DIPPED IN PINK, A LIGHTNING BOLT, A GLITTERING GOLD JACKET. EVERY NOTE A STAR.' },
-    { id: 'cos-midnight', kind: 'costume', fighter: 'aero', skin: 'MIDNIGHT', name: 'MIDNIGHT', price: 1000, info: 'AERO (TEST FIGHTER). HIS DOME HOLDS THE NIGHT SKY AND A CRESCENT MOON. THE GOLDFISH WEARS A NIGHTCAP.' },
-    { id: 'cos-vapor', kind: 'costume', fighter: 'nu', skin: 'VAPORWAVE', name: 'VAPORWAVE', price: 900, info: 'NU (TEST FIGHTER). PASTEL PINK AND TEAL, STRAIGHT OFF A 90S MALL.' },
-    { id: 'cos-olive', kind: 'costume', hidden: 'riphood', fighter: 'soul-summoner', skin: 'OLIVE DRAB', name: 'OLIVE DRAB', price: 1200, info: 'SOUL SUMMONER. A STEEL HELMET, OLIVE ARMOUR, A KHAKI GREATCOAT, A FLARE FOR A FLAME.' },
-    { id: 'cos-redarmy', kind: 'costume', hidden: 'papers', fighter: 'last-seen', skin: 'RED ARMY', name: 'RED ARMY', price: 1941, info: 'ROSEMARY (TEST FIGHTER). A SOVIET SOLDIER OF 1942 - AND WHEN SHE TURNS, A TANK, WITH ITS OWN MOVES.' },
+    {id:'cos-judgment',kind:'costume',rarity:'miracle',fighter:'soul-summoner',skin:'JUDGMENT',name:'JUDGMENT',price:2000,info:'SOUL SUMMONER. A SANS-INSPIRED COSTUME: CYAN EYE, PINK SLIPPERS, SKULL CANNONS, BONES AND A RED SOUL. INCLUDES ITS CUSTOM ENTRANCE AND VICTORY SCENE.'},
+    { id: 'cos-prism', kind: 'costume', rarity: 'miracle', fighter: 'hero-knight', skin: 'PRISM REGENT', name: 'PRISM REGENT', price: 2000, info: 'LACY. FACETED CRYSTAL ARMOUR, A PRISMATIC BLADE, A GLASS DIADEM AND ORBITING SHARDS. HER GUARD REFRACTS INTO THREE COLOURS.' },
+    { id: 'cos-choir', kind: 'costume', rarity: 'miracle', fighter: 'mr-wake', skin: 'ABYSSAL CHOIR', name: 'ABYSSAL CHOIR', price: 2000, info: 'MR WAKE. A DROWNED CATHEDRAL: BRONZE RELIQUARY MASK, LANTERN STAFF, EMBROIDERED ROBES AND DRIFTING BELLS THAT SEND OUT RINGS OF LIGHT.' },
+    { id: 'cos-orrery', kind: 'costume', rarity: 'miracle', fighter: 'soul-summoner', skin: 'ORRERY', name: 'ORRERY', price: 2000, info: 'SOUL SUMMONER. A WALKING CLOCKWORK OBSERVATORY: BRASS ASTROLABES, A STAINED-GLASS CLOAK, A CLOCK IN HIS CHEST AND ORBITING TIMEPIECES.' },
+    { id: 'cos-eclipse', kind: 'costume', rarity: 'legendary', fighter: 'soul-summoner', skin: 'ECLIPSE', name: 'ECLIPSE', price: 1500, info: 'SOUL SUMMONER. ARMOUR BLACK AS A DEAD SUN, A FLAME LIKE ITS CORONA. HITS THROW STARS.' },
+    { id: 'cos-aurora', kind: 'costume', rarity: 'epic', fighter: 'soul-summoner', skin: 'AURORA', name: 'AURORA', price: 1100, info: 'SOUL SUMMONER. NORTHERN LIGHTS: A TEAL CAPE AND A MAGENTA FLAME, WISPS ORBITING HIM.' },
+    { id: 'cos-vampire', kind: 'costume', rarity: 'epic', fighter: 'mr-wake', skin: 'VAMPIRE', name: 'VAMPIRE', price: 1300, info: 'MR WAKE. A MIDNIGHT COUNT IN BLACK AND CRIMSON. HIS HITS SCATTER BATS.' },
+    { id: 'cos-sakura', kind: 'costume', rarity: 'epic', fighter: 'mr-wake', skin: 'SAKURA', name: 'SAKURA', price: 1000, info: 'MR WAKE. CHERRY-BLOSSOM ROBES. PETALS FALL WHEREVER HE HITS.' },
+    { id: 'cos-obsidian', kind: 'costume', rarity: 'legendary', fighter: 'hero-knight', skin: 'OBSIDIAN', name: 'OBSIDIAN', price: 1300, info: 'LACY. VOLCANIC GLASS ARMOUR WITH LAVA IN THE CRACKS. HITS BURST INTO FLAME.' },
+    { id: 'cos-cyber', kind: 'costume', rarity: 'legendary', fighter: 'hero-knight', skin: 'CYBERBLADE', name: 'CYBERBLADE', price: 1400, info: 'LACY. CHROME AND NEON. HER HITS GLITCH INTO PIXELS.' },
+    { id: 'cos-celestial', kind: 'costume', rarity: 'legendary', fighter: 'soul-summoner', skin: 'CELESTIAL', name: 'CELESTIAL', price: 1600, info: 'SOUL SUMMONER. A CAPE FULL OF STARS, SILVER ARMOUR, A CRESCENT MOON RISING BEHIND HIS CROWN. TWO LITTLE MOONS ORBIT HIM.' },
+    { id: 'cos-plague', kind: 'costume', rarity: 'legendary', fighter: 'mr-wake', skin: 'PLAGUE DOCTOR', name: 'PLAGUE DOCTOR', price: 1400, info: 'MR WAKE. IVORY RESPIRATOR, JADE GOGGLES, BRASS-TRIMMED QUARANTINE COAT AND A CAGED SOUL LANTERN. LUMINOUS MOTHS ORBIT THROUGH DRIFTING MIASMA.' },
+    { id: 'cos-verdant', kind: 'costume', rarity: 'epic', fighter: 'hero-knight', skin: 'WILDWOOD', name: 'WILDWOOD', price: 1300, info: 'LACY. ARMOUR OF LIVING BARK AND MOSS, LEAVES GROWING FROM HER HELMET, A BLADE OF GLOWING GREEN WOOD.' },
+    { id: 'cos-glam', kind: 'costume', rarity: 'rare', fighter: 'nu', skin: 'GLAM', name: 'GLAM', price: 1000, info: 'NU (TEST FIGHTER). PLATINUM HAIR DIPPED IN PINK, A LIGHTNING BOLT, A GLITTERING GOLD JACKET. EVERY NOTE A STAR.' },
+    { id: 'cos-midnight', kind: 'costume', rarity: 'rare', fighter: 'aero', skin: 'MIDNIGHT', name: 'MIDNIGHT', price: 1000, info: 'AERO (TEST FIGHTER). HIS DOME HOLDS THE NIGHT SKY AND A CRESCENT MOON. THE GOLDFISH WEARS A NIGHTCAP.' },
+    { id: 'cos-vapor', kind: 'costume', rarity: 'common', fighter: 'nu', skin: 'VAPORWAVE', name: 'VAPORWAVE', price: 900, info: 'NU (TEST FIGHTER). PASTEL PINK AND TEAL, STRAIGHT OFF A 90S MALL.' },
+    { id: 'cos-olive', kind: 'costume', rarity: 'epic', hidden: 'riphood', fighter: 'soul-summoner', skin: 'OLIVE DRAB', name: 'OLIVE DRAB', price: 1200, info: 'SOUL SUMMONER. A STEEL HELMET, OLIVE ARMOUR, A KHAKI GREATCOAT, A FLARE FOR A FLAME.' },
+    { id: 'cos-redarmy', kind: 'costume', rarity: 'legendary', hidden: 'papers', fighter: 'last-seen', skin: 'RED ARMY', name: 'RED ARMY', price: 1941, info: 'ROSEMARY (TEST FIGHTER). A SOVIET SOLDIER OF 1942 - AND WHEN SHE TURNS, A TANK, WITH ITS OWN MOVES.' },
     // found in the MATRYOSHKA dolls only: a costume for each country the shopkeeper's souvenirs come from
-    { id: 'cos-tricolore', kind: 'costume', hidden: 'doll', fighter: 'soul-summoner', skin: 'TRICOLORE', name: 'TRICOLORE', price: 900, info: 'SOUL SUMMONER. A BLACK BICORNE WITH A TRICOLOUR COCKADE, A CAPE IN BLUE, WHITE AND RED, A WHITE SASH, A RED FLAME.' },
-    { id: 'cos-teatime', kind: 'costume', hidden: 'doll', fighter: 'mr-wake', skin: 'TEATIME', name: 'TEATIME', price: 900, info: 'MR WAKE. A RED TARTAN CLOAK, A MONOCLE, AND A PORCELAIN TEAPOT ON HIS STAFF, STILL STEAMING. HE ALWAYS STOPS AT FOUR.' },
-    { id: 'cos-liberty', kind: 'costume', hidden: 'doll', fighter: 'hero-knight', skin: 'LIBERTY', name: 'LIBERTY', price: 900, info: 'LACY. NAVY ARMOUR SCATTERED WITH STARS, A STRIPED SCARF, A CROWN OF GOLD RAYS AND A GOLDEN BLADE.' },
-    { id: 'cos-luckyred', kind: 'costume', hidden: 'doll', fighter: 'nu', skin: 'LUCKY RED', name: 'LUCKY RED', price: 900, info: 'NU (TEST FIGHTER). A RED SILK JACKET WITH GOLD CLOUDS AND KNOTTED BUTTONS, A RED RIBBON, GOLD SHADES. HITS BURST LIKE FIRECRACKERS.' },
-    { id: 'cos-amber', kind: 'costume', hidden: 'doll', fighter: 'aero', skin: 'AMBER', name: 'AMBER', price: 900, info: 'AERO (TEST FIGHTER). A DOME OF BALTIC AMBER WITH BUBBLES AND A FOSSIL LEAF TRAPPED INSIDE, AN IVORY SUIT, A FOLK-ART SCARF.' },
-    { id: 'cos-sunset', kind: 'costume', fighter: 'aero', skin: 'SUNSET', name: 'SUNSET', price: 900, info: 'AERO (TEST FIGHTER). GLASS GONE ORANGE AND MAGENTA. GOLDEN BUBBLES.' },
+    { id: 'cos-tricolore', kind: 'costume', rarity: 'rare', hidden: 'doll', fighter: 'soul-summoner', skin: 'TRICOLORE', name: 'TRICOLORE', price: 900, info: 'SOUL SUMMONER. A BLACK BICORNE WITH A TRICOLOUR COCKADE, A CAPE IN BLUE, WHITE AND RED, A WHITE SASH, A RED FLAME.' },
+    { id: 'cos-teatime', kind: 'costume', rarity: 'epic', hidden: 'doll', fighter: 'mr-wake', skin: 'TEATIME', name: 'TEATIME', price: 900, info: 'MR WAKE. A RED TARTAN CLOAK, A MONOCLE, AND A PORCELAIN TEAPOT ON HIS STAFF, STILL STEAMING. HE ALWAYS STOPS AT FOUR.' },
+    { id: 'cos-liberty', kind: 'costume', rarity: 'epic', hidden: 'doll', fighter: 'hero-knight', skin: 'LIBERTY', name: 'LIBERTY', price: 900, info: 'LACY. NAVY ARMOUR SCATTERED WITH STARS, A STRIPED SCARF, A CROWN OF GOLD RAYS AND A GOLDEN BLADE.' },
+    { id: 'cos-luckyred', kind: 'costume', rarity: 'rare', hidden: 'doll', fighter: 'nu', skin: 'LUCKY RED', name: 'LUCKY RED', price: 900, info: 'NU (TEST FIGHTER). A RED SILK JACKET WITH GOLD CLOUDS AND KNOTTED BUTTONS, A RED RIBBON, GOLD SHADES. HITS BURST LIKE FIRECRACKERS.' },
+    { id: 'cos-amber', kind: 'costume', rarity: 'epic', hidden: 'doll', fighter: 'aero', skin: 'AMBER', name: 'AMBER', price: 900, info: 'AERO (TEST FIGHTER). A DOME OF BALTIC AMBER WITH BUBBLES AND A FOSSIL LEAF TRAPPED INSIDE, AN IVORY SUIT, A FOLK-ART SCARF.' },
+    { id: 'cos-sunset', kind: 'costume', rarity: 'common', fighter: 'aero', skin: 'SUNSET', name: 'SUNSET', price: 900, info: 'AERO (TEST FIGHTER). GLASS GONE ORANGE AND MAGENTA. GOLDEN BUBBLES.' },
   ] },
   { name: 'STAGES', items: [
     { id: 'fx-night', kind: 'fx', name: 'NIGHTFALL', price: 500, info: 'RE-THEMES ANY STAGE: A MOONLIT TOWN ON THE HILLS, STARS, AND LAMP POSTS ON THE STAGE.', color: 0x1a2a6a },
@@ -164,7 +168,7 @@ import { revealed, owns } from '../progress.js';
 export const KEEPER = {
   // money: Mason's 9-frame animation (strip from tools/sprites/art/shopkeeper/face_money_anim.png); glasses: putting on
   // his specs to inspect a costume PREVIEW
-  faces: { calm: { fps: 6 }, happy: { fps: 6 }, money: { fps: 10 }, shock: { fps: 8 }, smug: { fps: 6 }, glasses: { fps: 6 },
+  faces: { noli_tap: { fps: 1 }, scar: { fps: 1 }, calm: { fps: 6 }, happy: { fps: 6 }, money: { fps: 10 }, shock: { fps: 8 }, smug: { fps: 6 }, glasses: { fps: 6 },
     // grin: an achievement / a new gacha prize; melt: a duplicate prize; bow: switching something off, a sold-out machine;
     // stare: the bell rung, or you've gone quiet for a while
     grin: { fps: 6 }, melt: { fps: 6 }, bow: { fps: 6 }, stare: { fps: 6 },

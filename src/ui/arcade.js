@@ -1,3 +1,4 @@
+import {lowEffects} from '../performance.js';
 // THE MENU LOOK ("bold arcade"): one kit every menu screen is built from, so the whole game reads as one thing.
 //   ArcadeBg      the moving backdrop: dark base, two big slanted colour slabs drifting, speed stripes, sparks, vignette
 //   titleBanner   a big slanted title plate top-left (slides in), with a small breadcrumb over it
@@ -63,6 +64,7 @@ export class ArcadeBg {
     this.sparks = Array.from({ length: 26 }, (_, i) => [((i * 7919) % 997) / 997, ((i * 104729) % 991) / 991, 0.3 + ((i * 31) % 97) / 140]);
   }
   update(t) {
+    if(lowEffects()&&this.lastFrame!==undefined&&t-this.lastFrame<2&&t>=this.lastFrame)return;this.lastFrame=t;
     const g = this.g, W = VIEW_W, H = VIEW_H; g.clear();
     g.fillStyle(ARC.ink, 1); g.fillRect(0, 0, W, H);
     for (let i = 0; i < 6; i++) { g.fillStyle(ARC.deep, 1 - i * 0.12); g.fillRect(0, H - 60 + i * 10, W, 10); }

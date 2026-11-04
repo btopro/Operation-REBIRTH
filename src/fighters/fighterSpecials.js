@@ -63,6 +63,7 @@ export class FighterSpecials {
         p.hitbox = () => { const b = base(); if (b && b.h && b.h.dmg) b.h = { ...b.h, dmg: Math.round(b.h.dmg * p.batMult) }; return b; };
       }
       this.match.puff(p.x, p.y, 0xffffff, 10); this.match.puff(p.x, p.y, this.fxColor, 8);
+      this.match.challengeEvent(this, 'reflect');
       this.match.popText(this, 'BATTED BACK!', '#ffe08a'); this.match.shake(4, 6);
       sfx('clang', 0.8, 1.3); sfx('bighit', 0.4, 1.6);
       this.hitstop = Math.max(this.hitstop || 0, 4);

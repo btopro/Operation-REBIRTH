@@ -1,3 +1,4 @@
+import {applySoulAid} from '../souls/progression.js';
 // Fighter methods: Grabs, holding and throws.
 // Mixed into the Fighter class (Fighter.js) - `this` is the fighter.
 import { sfx } from '../audio/sfx.js';
@@ -8,6 +9,7 @@ export class FighterGrab {
 
   // ---- grab and throw
   onGrab(target) {
+    this.hookPullFrom=this.def.id==='young-link' && this.move?.hookshot?{x:target.x,y:target.y}:null;
     this.grabbed = target; target.grabbedBy = this;
     target.setState('grabbed'); target.vx = target.vy = target.lx = target.ly = 0;
     this.setState('holding'); sfx('shield', 0.6, 0.7); this.quip('grab');
@@ -15,7 +17,10 @@ export class FighterGrab {
   st_holding(c) {
     const t = this.grabbed;
     if (!t || !t.alive) { this.grabbed = null; this.setState('idle'); return; }
-    t.x = this.x + this.facing * 26; t.y = this.y;
+    const pull=this.hookPullFrom,k=Math.min(1,this.t/10),ease=1-(1-k)*(1-k);
+    t.x = pull?pull.x+(this.x+this.facing*26-pull.x)*ease:this.x+this.facing*26; t.y = pull?pull.y+(this.y-pull.y)*ease:this.y;
+    if(pull && this.t<10)return;
+    this.hookPullFrom=null;
     if (this.pummelCd > 0) this.pummelCd--;
     let dir = null;
     if (this.t > 6) {
@@ -52,6 +57,7 @@ export class FighterGrab {
   pummel(t) {
     const m = this.match, dmg = 2;
     if (m.mode === 'stamina') t.hp -= dmg; else t.percent = Math.min(999, t.percent + dmg);
+    if(m.mode!=='stamina'&&applySoulAid(t))m.popText(t,'HEAL -'+t.soulHealAmount+'%','#7dffc4');
     if (t.state !== 'limit') t.limit = Math.min(LIMIT_MAX, t.limit + dmg);
     t.stats.damageTaken += dmg; this.stats.damageDealt += dmg;
     t.flash = 3; t.hitstop = this.hitstop = 4; this.pummelCd = 12;

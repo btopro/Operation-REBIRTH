@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {SOULS,SOUL_CYCLE_MS,getSoulBoard,validSoul,cycleTime,SOUL_DIFFICULTIES,difficultyName} from '../../src/souls/board.js';
+assert.deepEqual(SOULS.filter(s=>s.kind==='main'&&!['bendy','seek','figure','kage-ronin','neon-kitsune','chrome-monk','static-imp','oathbound-rowan','rune-archivist','vector-ace','byte-knight','storm-harrier','abyss-oracle','jade-warden'].includes(s.id)).map(s=>[s.id,s.stars,s.aidSlots]),[['sub-zero',3,2],['scorpion',3,2],['noob-saibot',3,2],['carnage',4,3],['brass-marshal',3,2],['leon',3,2],['cinder-finch',2,2],['ember-ronin',4,2],['shadow-young-link',3,1],['bill-cipher',5,3],['cloud',3,2],['steve',2,3]]);assert.equal(SOULS.find(s=>s.id==='bill-cipher').bonus.percent,20);assert.equal(SOULS.find(s=>s.id==='cloud').bonus.percent,10);assert.equal(SOULS.find(s=>s.id==='steve').bonus,null);
+const catalog=Array.from({length:12},(_,i)=>({id:'test-'+i,name:'Test '+i,kind:i%2?'aid':'main',stars:i%5+1,difficultyStars:5-i%5}));
+const a=getSoulBoard(1000,catalog),b=getSoulBoard(SOUL_CYCLE_MS-1,catalog),c=getSoulBoard(SOUL_CYCLE_MS,catalog);
+assert.deepEqual(a.souls,b.souls);assert.notDeepEqual(a.souls,c.souls);assert.equal(a.souls.length,8);assert.equal(new Set(a.souls.map(s=>s.id)).size,8);
+assert.equal(new Set(Object.values(SOUL_DIFFICULTIES)).size,5);for(let n=1;n<=5;n++)assert.notEqual(difficultyName(n),'UNRATED');assert.ok(a.souls.some(s=>s.kind==='aid')&&a.souls.some(s=>s.kind==='main'));
+for(const stars of [0,6,1.5,'3'])assert.equal(validSoul({...catalog[0],stars}),false);
+assert.equal(getSoulBoard(0,[...catalog,catalog[0],{...catalog[0],id:'bad',stars:9}]).total,12);
+assert.equal(cycleTime(a.nextCycleAt,1000),'04:59');assert.equal(cycleTime(300000,300000),'00:00');assert.equal(getSoulBoard(0).souls.length,8);
+assert.equal(SOULS.length,32);console.log('PASS: thirty-two souls, eight mixed rotating slots, stable cycles, named tiers and 1-5 star validation');

@@ -1,3 +1,7 @@
+import {drawTriforceSeal,drawTriforceProjectile} from './youngLinkSpecials.js';
+import { MASTER_SWORD_POSES } from './masterSwordPatches.js';
+import { skinInfo } from './skins.js';
+import { drawMasterSwordHilt } from './masterSword.js';
 // Lacy's Limit: the Blade cutscene (speed lines, hack windows, burning swing) and its drawing.
 // Mixed into the Fighter class (Fighter.js) - `this` is the fighter.
 import { FONT, VIEW_W, VIEW_H } from '../config.js';
@@ -72,7 +76,7 @@ export class LimitBlade {
     if (bit) this.stepHackWindows(U, L);
     if (bit && U.cut > 0 && U.ct % L.cutEvery === 1 && U.ct < L.cuts * L.cutEvery + 4) this.cutLine(U, '> CUT ' + String(U.cut).padStart(2, '0') + '/' + L.cuts, 0);
     const appear = L.cuts * L.cutEvery + 4;
-    if (U.ct === appear) U.execute = U.victims.some((t) => t.percent > 100);   // past 100%: she charges one killing slice instead
+    if (U.ct === appear) U.execute = !L.triangle && U.victims.some((t) => t.percent > 100);   // past 100%: she charges one killing slice instead
     const charge = U.execute ? L.executeCharge : 0, chargeFrom = appear + 10 + taunt, finalAt = chargeFrom + charge;
     U.charge = U.execute && U.ct >= chargeFrom && U.ct < finalAt ? (U.ct - chargeFrom) / charge : 0;
     U.appearAt = appear; U.finalAt = finalAt;                          // for her poses (animFrame)
@@ -231,7 +235,13 @@ export class LimitBlade {
   // Where the giant Limit blade is at tick t: hilt (hx, hy), angle, length and half-width. Used both to
   // draw it and as its hitbox, so the two always match.
   bladeGeom(L, U, t) {
-    const RAISED = { x: -27, y: -41, ang: -1.774 }, GUARD = { x: 37, y: -26, ang: 0.59 };
+    let RAISED = { x: -27, y: -41, ang: -1.774 }, GUARD = { x: 37, y: -26, ang: 0.59 };
+    if(L.triforce){RAISED={x:-8,y:-39,ang:-1.65};GUARD={x:14,y:-26,ang:.35};}
+    if(skinInfo(this.def.id,this.skin).masterSword) {
+      const raised=MASTER_SWORD_POSES.hk_attack1.find(p=>p[0]===1),guard=MASTER_SWORD_POSES.hk_guard[0];
+      if(raised)RAISED={x:raised[1]-66,y:raised[2]-86,ang:Math.atan2(raised[4],raised[3])};
+      if(guard)GUARD={x:guard[1]-66,y:guard[2]-86,ang:Math.atan2(guard[4],guard[3])};
+    }
     const ease = (k) => 1 - (1 - k) * (1 - k);
     let pose = RAISED, grow = ease(Math.max(0, Math.min(1, t / L.growUntil)));
     if (U.phase === 'slash') {
@@ -243,6 +253,8 @@ export class LimitBlade {
     return { len: 30 + 145 * grow, half: 1.5 + 6 * grow, glow: grow, ang: pose.ang, hx: this.x + this.facing * pose.x, hy: this.y + pose.y };
   }
   drawBladeLimit(g, L, U) {
+    if(L.triangle&&U.phase!=='cutscene')return drawTriforceProjectile(g,this,U);
+    if(L.triforce)drawTriforceSeal(g,U);
     const C = this.style === 'hero' ? CRYSTAL_BLADE : L.colors;
     if (U.phase !== 'cutscene' && this.style === 'onebit') return this.drawBurningSwing(g, L, U);
     if (U.phase !== 'cutscene') {
@@ -273,7 +285,8 @@ export class LimitBlade {
       blade(Math.max(0.6, half * 0.45), C.core, 0.6 + 0.4 * glow);
       }
       g.fillStyle(C.outline, 1); g.fillRect(hx - nx * (half + 4) - 1, hy - ny * (half + 4) - 1, 3, 3); g.fillRect(hx + nx * (half + 4) - 1, hy + ny * (half + 4) - 1, 3, 3);
-      g.fillStyle(0x929ca0, 1); g.fillRect(Math.round(hx - 2), Math.round(hy - 2), 4, 4);       // hilt in her hands
+      g.fillStyle(0x929ca0, 1); g.fillRect(Math.round(hx - 2), Math.round(hy - 2), 4, 4);
+      if (skinInfo(this.def.id,this.skin).masterSword) drawMasterSwordHilt(g,hx,hy,dx,dy,1+glow*.4);       // hilt in her hands
       if (U.phase === 'grow' && this.t % 3 === 0 && glow < 1) this.match.puff(hx + dx * len, hy + dy * len, 0x9ad8f0, 1);   // sparks at the growing tip
       if (U.phase === 'slash') {                                                                 // swing trail
         for (let k = 1; k < 7; k++) {
@@ -287,8 +300,9 @@ export class LimitBlade {
     // cutscene: every cut leaves a streak of light through the target
     if (U.charge > 0) {                                     // charging the killing slice: the sword raised high, growing and blazing
       const k = U.charge, ease = 1 - (1 - k) * (1 - k);
-      const len = 40 + 150 * ease, half = 2 + 7 * ease, ang = -1.774 + Math.sin(this.anim * 0.9) * 0.02 * k;
-      const hx = this.x + this.facing * -27, hy = this.y - 41;
+      const held=skinInfo(this.def.id,this.skin).masterSword?this.bladeGeom(L,{phase:'grow'},L.growUntil):null;
+      const len = 40 + 150 * ease, half = 2 + 7 * ease, ang = (held?.ang ?? -1.774) + Math.sin(this.anim * 0.9) * 0.02 * k;
+      const hx = held?.hx ?? this.x + this.facing * -27, hy = held?.hy ?? this.y - 41;
       const dx = Math.cos(ang) * this.facing, dy = Math.sin(ang), nx = -dy, ny = dx;
       const blade = (w, col, a) => {
         g.fillStyle(col, a);
@@ -310,6 +324,7 @@ export class LimitBlade {
         g.fillStyle(i % 2 ? 0xffffff : C.light, 1); g.fillRect(Math.round(tx + Math.cos(a) * d), Math.round(ty + Math.sin(a) * d), 2, 2);
       }
       g.fillStyle(0x929ca0, 1); g.fillRect(Math.round(hx - 2), Math.round(hy - 2), 4, 4);
+      if (skinInfo(this.def.id,this.skin).masterSword) drawMasterSwordHilt(g,hx,hy,dx,dy,1+k*.4);
     }
     if (this.style === 'onebit') {                          // 1-BIT cuts: stair-stepped pixel lines, black under white, with a dithered tail
       for (const sl of U.slashes) {

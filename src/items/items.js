@@ -107,3 +107,4 @@ export class ItemSpawner {
   }
   render() { for (const i of this.items) i.render(); }
 }
+

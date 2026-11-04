@@ -1,0 +1,64 @@
+import { createServer } from 'vite';
+import { chromium } from 'playwright-core';
+import { readFileSync,mkdirSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const server=await createServer({server:{host:'127.0.0.1',port:0},logLevel:'silent'});await server.listen();const url=server.resolvedUrls.local[0];
+const browser=await chromium.launch({executablePath:process.env.SIM_CHROME||'/usr/bin/chromium',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage','--mute-audio','--no-sandbox']});
+try{
+ const page=await browser.newPage({viewport:{width:1280,height:720}});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.route('**/*',r=>{const u=r.request().url();if(u.includes('/npm/phaser@'))return r.fulfill({body:readFileSync('node_modules/phaser/dist/phaser.min.js'),contentType:'application/javascript'});return u.startsWith(url)?r.continue():r.abort();});
+ await page.goto(url);await page.waitForFunction(()=>window.game?.scene.isActive('Title'),null,{timeout:120000});
+ await page.evaluate(async()=>{
+ const {MatchScene}=await import('/src/scenes/MatchScene.js'),{WinScene}=await import('/src/scenes/WinScene.js');MatchScene.prototype.update=function(){};window.renderPremiumWin=WinScene.prototype.update;WinScene.prototype.update=function(){};
+ const {skinsFor}=await import('/src/fighters/skins.js');
+ window.premiumWin=async(fighter,name,rival)=>{for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);const skin=skinsFor(fighter).findIndex(s=>s.name===name);window.game.scene.start('Win',{preview:true,results:[{fighter,skin,slot:0,label:'WINNER'},{fighter:rival,skin:0,slot:1,label:'CPU'}]});await new Promise(r=>setTimeout(r,160));return window.game.scene.getScene('Win');};
+ });
+ const endings=[];
+ const specs=[['soul-summoner','ORRERY','hero-knight','orrery_twelve',45,'LACY was lost to time.'],['hero-knight','PRISM REGENT','mr-wake','prism_ascent',0,'shine bright, today was a good fight'],['mr-wake','ABYSSAL CHOIR','hero-knight','choir_cathedral',0,'LACY met the final bell.'],['hero-knight','OBSIDIAN','mr-wake','obsidian_volcano',0,'Burn like the rest of them.']];
+ for(const [fighter,name,rival,fn,step,line] of specs){
+  const info=await page.evaluate(async({fighter,name,rival})=>{const w=await window.premiumWin(fighter,name,rival);return {fn:w.cut.fn,line:w.cut.line,len:w.cut.len,card:w.cut.card,shots:w.cut.shots};},{fighter,name,rival});assert.equal(info.fn,fn);assert.equal(info.line,line);
+  const timeline=await page.evaluate(({step,line,fn})=>{
+   const w=window.game.scene.getScene('Win'),views=new Set(),counts=new Set(),phases=new Set(),zooms=new Set();let zoom=0,sawLaunch=false,sawSubmerge=false,allRims=true,levitate=false,glow=false,white=false,rivalGone=false,staffSlam=false,bellDrop=false;
+   for(let t=1;t<w.cut.len;t+=3){w.t=t-1;window.renderPremiumWin.call(w);const a=w.cineAction;views.add(w.cineFrame.shot);zooms.add(w.cineFrame.zoom.toFixed(2));if(a.phase)phases.add(a.phase);if(!Number.isFinite(w.cineWorld.x+w.cineWorld.y+w.hero.x+w.hero.y))throw Error('invalid camera');
+    if(step){const expected=Math.min(12,Math.floor(t/step));if(a.count!==expected)throw Error('incorrect count');if(w.hero.visible||w.losers.some(l=>l.s.visible))throw Error('clock must show only its object');if(w.cineFrame.zoom<zoom)throw Error('zoom moved backwards');zoom=w.cineFrame.zoom;counts.add(a.count);if(expected<12&&w.lineT.visible)throw Error('caption before twelve');if(expected===12&&(!w.lineT.visible||w.lineT.text!==line))throw Error('missing clock caption');}
+    if(fn==='prism_ascent'){if(!w.hero.visible||a.crystals!==8)throw Error('Lacy and crystals must remain together');levitate ||= a.rise>=65;glow ||= a.glow===1;white ||= a.whiteFade===1&&w.lineT.alpha===0;if(t<w.cut.card&&w.lineT.visible)throw Error('early blessing');if(t>=w.cut.card&&w.lineT.text!==line)throw Error('wrong blessing');}
+    if(fn==='choir_cathedral'){rivalGone ||= a.rivalGone===true;staffSlam ||= a.phase==='slam'&&a.staffDown===true;bellDrop ||= a.phase==='bell-fall'&&a.bellY>150;if(!a.lookingAway)throw Error('Choir turned toward opponent');if(a.phase==='charge'&&!w.losers[0].s.texture.key.includes('run'))throw Error('rival must run');if(w.hero.visible&&!w.hero.texture.key.startsWith('wake_choir_'))throw Error('wrong choir costume');}
+    if(fn==='obsidian_volcano'){allRims&&=a.curvedRim===true;if(a.phase==='launched'&&a.rivalPosition[0]>500)sawLaunch=true;if(a.phase==='submerged'&&!w.losers[0].s.visible)sawSubmerge=true;}
+   }
+   return {views:views.size,zooms:zooms.size,counts:[...counts],phases:[...phases],sawLaunch,sawSubmerge,allRims,levitate,glow,white,rivalGone,staffSlam,bellDrop};
+  },{step,line,fn});assert.equal(timeline.views,fn==='choir_cathedral'?2:info.shots.length);if(step)assert.deepEqual(timeline.counts,Array.from({length:13},(_,i)=>i));if(fn==='prism_ascent')assert.ok(timeline.levitate&&timeline.glow&&timeline.white&&timeline.zooms>=3);if(fn==='choir_cathedral')assert.ok(timeline.staffSlam&&timeline.bellDrop&&timeline.rivalGone&&timeline.zooms>=1&&timeline.phases.length===6);if(fn==='obsidian_volcano')assert.ok(timeline.sawLaunch&&timeline.sawSubmerge&&timeline.allRims);
+  const samples=step?[[1,'start'],[step*6,'six'],[step*12-1,'eleven'],[step*12,'twelve']]:info.shots.map(([from,shot],i)=>[Math.floor((from+(info.shots[i+1]?.[0]||info.len))/2),shot]);
+  if(fn==='prism_ascent')samples.push([688,'full-white']);
+  for(const [t,shot] of samples){await page.evaluate(t=>{const w=window.game.scene.getScene('Win');w.t=t-1;window.renderPremiumWin.call(w);},t);await page.screenshot({path:'/workspace/work/'+name.toLowerCase().replaceAll(' ','-')+'-'+shot+'.png'});}
+  endings.push({name,...timeline});
+ }
+ const plague=await page.evaluate(async()=>{
+ const {skinsFor}=await import('/src/fighters/skins.js'),{MR_WAKE}=await import('/src/fighters/mrWake.js'),{drawPremiumEntrance}=await import('/src/scenes/premiumEntrances.js'),{settings}=await import('/src/settings.js');
+ const skins=skinsFor('mr-wake'),skin=skins.findIndex(s=>s.name==='PLAGUE DOCTOR');const P=await import('/src/progress.js');P.grantItem('cos-plague');
+ for(const active of window.game.scene.getScenes(true))window.game.scene.stop(active.scene.key);
+ Object.assign(settings,{mode:'stock',stocks:3,cpuCount:1,p1Pad:null,extraPads:[],picks:['mr-wake','hero-knight'],skins:[skin,0],stage:'gravemoon-bridge',items:false,hazards:false,crt:false});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,180));const m=window.game.scene.getScene('Match'),f=m.fighters[0];f.state='idle';f.grounded=true;f.anim=77;m.countdown=0;m.intros=null;m.draw();f.drawSkinAura(f.fx);window.plagueMatch=m;
+ const g=m.add.graphics(),res=drawPremiumEntrance(g,{I:{kind:'quarantine-lantern'},f,x:250,y:250},.5,40);g.destroy();return {aura:!!f.vfx.aura.plagueRegalia,reveal:res.vis,sheets:Object.values(MR_WAKE.costumeSheets.plague).every(k=>m.textures.exists(k))};
+ });assert.ok(plague.aura&&plague.sheets&&plague.reveal>0&&plague.reveal<1);await page.waitForTimeout(80);await page.screenshot({path:'/workspace/work/plague-legendary-match.png'});
+ const alternate=await page.evaluate(async()=>{const w=await window.premiumWin('soul-summoner','ORRERY','mr-wake');return w.cut.line;});assert.equal(alternate,'MR WAKE was lost to time.');
+ const skins=[];
+ for(const [fighter,name] of [['hero-knight','PRISM REGENT'],['mr-wake','ABYSSAL CHOIR']]){
+  const skin=await page.evaluate(async({fighter,name})=>{const {settings}=await import('/src/settings.js'),{skinsFor}=await import('/src/fighters/skins.js'),{SHOP}=await import('/src/data/shop.js'),P=await import('/src/progress.js');const it=SHOP.flatMap(t=>t.items).find(i=>i.skin===name),si=skinsFor(fighter).findIndex(s=>s.name===name);P.grantItem(it.id);
+   for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);Object.assign(settings,{mode:'stock',stocks:3,cpuCount:1,p1Pad:null,extraPads:[],picks:[fighter,'soul-summoner'],skins:[si,0],stage:'gravemoon-bridge',items:false,hazards:false,crt:false});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,180));const m=window.game.scene.getScene('Match'),f=m.fighters[0];m.countdown=0;m.intros=null;m.bigText.setText('');f.placeAt(-60,0);f.setState('idle');f.grounded=true;m.fighters[1].placeAt(200,0);m.draw();
+   let frames=0;for(const key of Object.values(f.sheets)){if(!m.textures.exists(key))throw Error('missing '+key);frames+=m.textures.get(key).frameTotal-1;}
+   if(fighter==='hero-knight'){for(const move of ['fsmash','fair','bair','nair','uair'])for(const facing of [-1,1]){f.facing=facing;f.startAttack(move);for(let t=0;t<f.move.frames;t+=2){f.t=t;m.draw();if(f.sprite.texture.key==='__MISSING')throw Error('missing crown pose');}}f.facing=1;f.startAttack('fsmash');f.t=8;m.draw();}
+   return {name,frames,effects:f.fxBack.commandBuffer.length>0||f.fx.commandBuffer.length>0};
+  },{fighter,name});assert.ok(skin.effects&&skin.frames>100);skins.push(skin);await page.screenshot({path:'/workspace/work/'+(fighter==='hero-knight'?'prism-crown-attack':'choir-new-match')+'.png'});
+  const shop=await page.evaluate(async({name,fn})=>{const {SHOP}=await import('/src/data/shop.js');window.game.scene.stop('Match');window.game.scene.start('Shop');await new Promise(r=>setTimeout(r,160));const s=window.game.scene.getScene('Shop');s.openPreview(SHOP.flatMap(t=>t.items).find(i=>i.skin===name));s.previewCinema('outro');await new Promise(r=>setTimeout(r,160));const w=window.game.scene.getScene('Win');const result=w.cut.fn===fn&&w.data0.shopPreview;w.done();await new Promise(r=>setTimeout(r,100));return result&&window.game.scene.isActive('Shop')&&s.pv.it.skin===name;},{name,fn:fighter==='hero-knight'?'prism_ascent':'choir_cathedral'});assert.ok(shop);
+ }
+ const ambience=await page.evaluate(async()=>{const {settings}=await import('/src/settings.js');for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);Object.assign(settings,{stage:'the-construct',track:'auto'});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,200));const m=window.game.scene.getScene('Match'),a=m.cache.audio.get('bgm_construct'),snd=m.sound.get('bgm_construct');return {key:m.stage.music,cached:!!a,duration:a?.duration,loop:snd?.loop,oldPlaying:!!m.sound.get('bgm_infected')?.isPlaying};});assert.equal(ambience.key,'bgm_construct');assert.ok(ambience.cached&&ambience.duration>=35&&ambience.loop&&!ambience.oldPlaying);
+ const noliTap=await page.evaluate(async()=>{
+ const {ShopScene}=await import('/src/scenes/ShopScene.js');ShopScene.prototype.update=function(){};
+ for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);window.game.scene.start('Shop');await new Promise(r=>setTimeout(r,180));const s=window.game.scene.getScene('Shop');s.noli=true;s.t=100;
+ const tap=()=>s.input.emit('pointerdown',{x:524,y:126},[]);
+ tap();s.keeper(s.g,s.t);const safeWithoutAsset=s.faceImg.texture.key==='shop_face_noli';
+ // A temporary in-memory texture verifies the slot without substituting for the user's missing artwork.
+ const cv=document.createElement('canvas');cv.width=cv.height=64;const c=cv.getContext('2d');c.fillStyle='#fff';c.fillRect(10,10,44,44);s.textures.addSpriteSheet('shop_face_noli_tap',cv,{frameWidth:64,frameHeight:64});
+ tap();s.keeper(s.g,s.t);const first=s.faceImg.texture.key==='shop_face_noli_tap';tap();s.keeper(s.g,s.t);const second=s.faceImg.texture.key==='shop_face_noli';tap();s.t+=181;s.keeper(s.g,s.t);const expiry=s.faceImg.texture.key==='shop_face_noli';s.noli=false;tap();s.keeper(s.g,s.t);const normal=s.faceImg.texture.key!=='shop_face_noli_tap';return {safeWithoutAsset,first,second,expiry,normal};
+ });for(const v of Object.values(noliTap))assert.ok(v);
+ assert.deepEqual(errors,[]);console.log('PASS',JSON.stringify({endings,plague,skins,ambience,alternate,noliTap}));
+}finally{await browser.close();await server.close();}

@@ -1,0 +1,45 @@
+import { createServer } from 'vite';
+import { chromium } from 'playwright-core';
+import { readFileSync,mkdirSync } from 'node:fs';
+import assert from 'node:assert/strict';
+const server=await createServer({server:{host:'127.0.0.1',port:0},logLevel:'silent'});await server.listen();const url=server.resolvedUrls.local[0];
+const browser=await chromium.launch({executablePath:process.env.SIM_CHROME||'/usr/bin/chromium',headless:true,args:['--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage','--mute-audio','--no-sandbox']});
+try{
+ const page=await browser.newPage({viewport:{width:844,height:390},isMobile:true,hasTouch:true,userAgent:'Mozilla/5.0 (Linux; Android 13; Pixel 6) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36'});const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ await page.route('**/*',r=>{const u=r.request().url();if(u.includes('/npm/phaser@'))return r.fulfill({body:readFileSync('node_modules/phaser/dist/phaser.min.js'),contentType:'application/javascript'});return u.startsWith(url)?r.continue():r.abort();});
+ await page.goto(url);await page.waitForFunction(()=>window.game?.scene?.isActive('Title'),null,{timeout:120000});
+
+
+
+
+
+
+
+
+ const result=await page.evaluate(async()=>{
+ const {TEST_ROSTER}=await import('/src/fighters/roster.js'),{MatchScene}=await import('/src/scenes/MatchScene.js'),{fistsPose}=await import('/src/fighters/fistsAnimation.js');window.realMatchUpdate=MatchScene.prototype.update;MatchScene.prototype.update=function(){};
+ const created=(key,action)=>new Promise(resolve=>{window.game.scene.getScene(key).events.once('create',()=>resolve(window.game.scene.getScene(key)));action();});for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);
+ const lab=await created('TestFighters',()=>window.game.scene.start('TestFighters'));lab.sel=TEST_ROSTER.findIndex(f=>f.id==='fists');if(lab.sel<0)throw Error('Fists absent from lab');lab.mode=0;const m=await created('Match',()=>lab.start());m.countdown=0;m.intros=null;m.bigText.setText('');const f=m.fighters[0],v=m.fighters[1];if(f.def.id!=='fists'||m.mode!=='training')throw Error('Lab did not launch Fists training');
+ const prepare=()=>{f.hitstop=0;f.invincible=0;f.placeAt(-50,0);f.facing=1;f.grounded=true;v.invincible=0;v.star=0;v.hitstop=0;v.setState('idle');v.grounded=true;v.grabbedBy=null;m.hits.clear();m.limitHits=[];};
+ prepare();f.placeAt(-200,0);f.platform=m.stage.platforms[0];f.setState('run');f.vx=.1;f.age++;f.render(0);if(f.sprite.texture.key!=='fists_run')throw Error('Fists still walks at low speed');
+ const drive={x:1,y:0,down:false,held:()=>false,pressed:()=>false};for(let i=0;i<12;i++){f.physics(drive);f.age++;f.render(0);if(f.sprite.texture.key!=='fists_run'||f.sprite.frame.name<1||f.sprite.frame.name>10)throw Error('Incorrect sprint clip');}if(Math.abs(f.vx-4.5)>.001)throw Error('Fists speed not increased '+f.vx);
+ const spriteHeight=(fighter)=>{const fr=fighter.sprite.frame,img=fighter.sprite.texture.getSourceImage(),c=document.createElement('canvas');c.width=fr.cutWidth;c.height=fr.cutHeight;const ctx=c.getContext('2d');ctx.drawImage(img,fr.cutX,fr.cutY,fr.cutWidth,fr.cutHeight,0,0,fr.cutWidth,fr.cutHeight);const p=ctx.getImageData(0,0,c.width,c.height).data;let lo=c.height,hi=0;for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++)if(p[(y*c.width+x)*4+3]>128){lo=Math.min(lo,y);hi=Math.max(hi,y);}return hi-lo+1;};f.setState('idle');f.t=0;f.render(0);const height=spriteHeight(f);if(height<51||height>58)throw Error('Fists height does not match cast '+height);
+ const damaged={};for(const name of ['jab','ftilt','utilt','dtilt','dashAttack','fsmash','usmash','dsmash','nair','fair','bair','uair','dair','neutralB','sideB','downB']){
+ prepare();f.startAttack(name);const move=f.def.moves[name],seen=new Set();for(let t=0;t<move.frames;t++){f.t=t;f.render(0);const p=fistsPose(f);seen.add(p.frame);if(!f.sprite.texture.has(p.frame))throw Error('Missing animation frame '+name+' '+p.frame);const before=f.sprite.frame.name;f.render(0);if(f.sprite.frame.name!==before)throw Error('Animation advances per render '+name);}
+ if(seen.size<3)throw Error('Attack animation missing '+name);f.t=move.hits[0].from;f.hitstop=0;const hb=f.activeHitboxes()[0];v.x=(hb.x1+hb.x2)/2;v.y=hb.y2;const old=v.percent;m.resolveHits([]);if(v.percent<=old)throw Error('Attack did not damage '+name);damaged[name]=v.percent-old;
+ }
+ prepare();f.startUpB(f.ctrl);f.t=f.def.moves.upb.riseAt;f.st_upb(f.ctrl);if(f.vy>=0||f.grounded)throw Error('Uppercut failed to rise');f.render(0);if(f.sprite.texture.key!=='fists_moves')throw Error('Uppercut sprite missing');const {FISTS_CLIPS}=await import('/src/fighters/fistsAnims.js');if(!FISTS_CLIPS.upflame.includes(f.sprite.frame.name))throw Error('Up special is not using the upward charge animation');
+ prepare();f.startAttack('grab');f.t=5;const hb=f.activeHitboxes()[0];v.x=(hb.x1+hb.x2)/2;v.y=hb.y2;m.resolveHits([]);if(f.state!=='holding'||v.state!=='grabbed')throw Error('Grab failed');f.grabbed=null;v.grabbedBy=null;
+ prepare();f.limit=100;v.x=f.x+35;v.y=f.y;const before=v.percent;f.startLimit();let caught=false,highest=v.y,poses=new Set(),finalLaunch=false;for(let tick=0;tick<240&&f.state==='limit';tick++){f.t++;m.frame++;f.st_limit();if(f.ult?.phase==='cutscene'){caught=true;highest=Math.min(highest,v.y);poses.add(fistsPose(f).frame);if(f.ult.released)finalLaunch=true;}f.render(0);}if(!caught||highest>-100||poses.size<12||!finalLaunch||v.percent-before!==40||f.state==='limit'||m.cutscene||m.frozen)throw Error('Aerial super failed '+JSON.stringify({caught,highest,poses:poses.size,finalLaunch,damage:v.percent-before,state:f.state}));const windows=10,total=v.percent-before;
+ prepare();f.startLimit();v.x=f.x-200;for(let tick=0;tick<90&&f.state==='limit';tick++){f.t++;f.st_limit();}if(m.cutscene||m.frozen||f.state==='limit')throw Error('Missed super did not recover');
+ const {skinSheets,skinsFor,skinUnlocked}=await import('/src/fighters/skins.js');
+ if(skinsFor('fists').length!==3||!skinUnlocked('fists',1)||!skinUnlocked('fists',2))throw Error('Palettes unavailable');
+ const read=(key)=>{const img=m.textures.get(key).getSourceImage(),c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.drawImage(img,0,0);return x.getImageData(0,0,c.width,c.height).data;};
+ for(const palette of [1,2]){const sheets=skinSheets(m,f.def,palette);for(const [kind,key] of Object.entries(f.def.sheets)){const a=read(key),b=read(sheets[kind]);let changed=0;for(let i=0;i<a.length;i+=4){if(a[i+3]!==b[i+3])throw Error('Palette altered silhouette');if(a[i]!==b[i]||a[i+1]!==b[i+1]||a[i+2]!==b[i+2])changed++;}if(changed<20)throw Error('Missing recolor '+kind);}f.sheets=sheets;f.skin=palette;prepare();f.startAttack('sideB');f.t=12;f.render(0);if(f.sprite.texture.key!==sheets.moves)throw Error('Palette absent in attack');}
+ prepare();f.startAttack('sideB');f.t=12;f.render(0);m.draw();return {damaged,height,sprintSpeed:4.5,uppercut:true,grab:true,limitHits:windows,limitDamage:total,aerialCombo:highest};
+ });await page.screenshot({path:'/workspace/work/fists-gameplay.png'});
+ // Exercise the real frozen/cinematic tick path, including target physics and release.
+ await page.evaluate(()=>{const m=window.game.scene.getScene('Match'),f=m.fighters[0],v=m.fighters[1];m.countdown=0;m.intros=null;m.frozen=0;f.hitstop=v.hitstop=0;f.placeAt(-100,0);v.placeAt(-65,0);f.grounded=v.grounded=true;f.facing=1;v.invincible=v.star=0;v.setState('idle');f.limit=100;f.startLimit();let caught=false;for(let i=0;i<300&&f.state==='limit';i++){m.tick();if(f.ult?.ct===60){f.render(0);v.render(0);m.draw();window.comboShot=true;}if(m.cutscene===f)caught=true;}if(!caught||m.frozen||m.cutscene||f.state==='limit'||!Number.isFinite(v.y))throw Error('Real cinematic tick/release failed');});
+ // Let the real simulation run with a Fists CPU to catch integration/state-machine errors.
+ await page.evaluate(async()=>{const {MatchScene}=await import('/src/scenes/MatchScene.js'),{settings}=await import('/src/settings.js');MatchScene.prototype.update=window.realMatchUpdate;for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);Object.assign(settings,{mode:'stock',stocks:2,picks:['soul-summoner','fists'],skins:[0,0],cpuCount:1,cpuLevels:[3],stage:'sky-sanctum',items:false,hazards:false,p1Pad:null,extraPads:[]});await new Promise(resolve=>{window.game.scene.getScene('Match').events.once('create',resolve);window.game.scene.start('Match');});const m=window.game.scene.getScene('Match');m.countdown=0;m.intros=null;m.fighters[1].limit=100;});await page.waitForTimeout(4500);assert.ok(await page.evaluate(()=>window.game.scene.getScene('Match').fighters.every(f=>Number.isFinite(f.x+f.y))));assert.deepEqual(errors,[]);console.log('PASS Fists lab, all timed attacks, actual damage, grab, rising recovery, custom super, CPU simulation',result);
+}finally{await browser.close();await server.close();}

@@ -1,3 +1,8 @@
+import {YOUNG_LINK_EYES} from './youngLinkEyes.js';
+import {copyPackedFrames,expandPackedTexture} from '../mobileTextures.js';
+import { PREMIUM_ANIMS } from './premiumAnimsData.js';
+import { SKIN_UPGRADES } from './skinUpgradeData.js';
+import { MASTER_SWORD_PATCHES } from './masterSwordPatches.js';
 // Colour variations (alternate costumes). Each fighter's sprite uses a small palette, so a skin is a set of
 // rules that recolour whole colour groups (armour trim, cape, flame, eyes...) by moving their hue,
 // saturation and brightness together. The shading inside each group survives, so it still looks hand-made.
@@ -436,7 +441,7 @@ export const SKINS = {
     // PLAGUE DOCTOR: a black coat, leather hat and gloves, a long beaked mask with green-glass goggles; the staff carries
     // a caged lantern of sickly green fire. Hits puff out green miasma
     { name: 'PLAGUE DOCTOR', sheetSet: 'plague', shop: 'cos-plague', swatch: 0x1a2a1e, fx: 0x5aff6a, groups: MW, rules: { robe: { to: 150, sat: 0.25, val: 0.42 }, magic: { to: 118, sat: 1.1, val: 1.15 }, cloth: { to: 28, sat: 0.9, val: 1.1 }, wood: { to: 20, sat: 0.3, val: 0.6 } },
-      vfx: { hit: { shape: 'smoke', colors: [0x5aff6a, 0x2a8a3a, 0xc8ffb0], n: 9, sparks: [0x5aff6a, 0xe0c890] } } },
+      vfx: { aura: { plagueRegalia: true }, hit: { shape: 'smoke', colors: [0x5aff6a, 0x2a8a3a, 0xc8ffb0], n: 14, sparks: [0x5aff6a, 0xe0c890] } } },
     // ---- MILESTONES: "The Abyss Answers". Every KO drags him deeper into the sea, until the
     // ocean itself crowns him.
     { name: 'RIPTIDE', milestone: 1, swatch: 0x2a8ad0, fx: 0x7ad0ff,
@@ -469,7 +474,61 @@ export const SKINS = {
   ],
 };
 
+// Appended so existing saves and costume indices remain stable. This is a palette swap, not a redraw.
+SKINS['hero-knight'].push({
+  name: 'HYLIAN HERO', masterSword: true, swatch: 0x368647, fx: 0x8eeeff, groups: HK,
+  rules: { suit: { to: 123, sat: 2.2, satAdd: .1, val: 1.12 },
+    sash: { to: 29, sat: 1.1, val: .9 }, white: { hue: 46, satAdd: .55, val: 1.08 } },
+  lore: 'Green cloth, golden highlights, and a little fairy who never leaves her side.',
+  vfx: { aura: { fairy: true } },
+});
+
+// New costumes append to preserve saved skin indices.
+SKINS['last-seen'].push({name:'BROKEN BUNNY',sheetSet:'bunny',swatch:0x559d98,fx:0xa7dfc7,
+ lore:'The teal rabbit suit was sealed in the service room. Its jaw still moves when the power is off.',
+ pal:{outline:0x0b1c22,deep:0x23494b,mid:0x559d98,light:0xb4dfcb,core:0xfff1cc,shade:0x142a30,void:0x03090e},
+ vfx:{hit:{shape:'scrap',colors:[0x6da69c,0xd2c8aa,0x4b394f],n:9},seenHit:{shape:'scrap',colors:[0x6da69c,0xb8c8b5,0x754d3b],n:10},seen:{drips:[0x324d49,0x6a4438],tuft:0x559d98,sparks:[0xd2dbc0,0x9ac9bc],smoke:0x0c2125}}});
+SKINS['soul-summoner'].push({name:'ORRERY',sheetSet:'orrery',shop:'cos-orrery',swatch:0xe0ba6d,fx:0x95ebcf,
+ lore:'A walking clockwork observatory. Brass astrolabes orbit a glass soul, beneath a cloak of stained-glass constellations.',
+ pal:{outline:0x14212c,deep:0x30565c,mid:0x4b9e98,light:0x95ebcf,core:0xffefb0,shade:0x283b40,void:0x08131c},
+ vfx:{hit:{shape:'star',colors:[0xe0ba6d,0x95ebcf,0xffefb0],n:10,ring:0xe0ba6d,glint:true},trail:0x95ebcf,aura:{orrery:true},minion:{armor:{to:175,sat:.6,val:1.1},flame:{to:40,sat:.6,val:1.2}}}});
+
+SKINS['hero-knight'].push({name:'PRISM REGENT',sheetSet:'prism',shop:'cos-prism',swatch:0xc8d8f4,fx:0x98eee2,
+ lore:'A sovereign cut from living crystal: a faceted diadem, a spectral blade and a court of orbiting glass shards.',
+ pal:{outline:0x151932,deep:0x4a496e,mid:0x8b9cce,light:0xb5f3e9,core:0xffe6fc,shade:0x2a2f52,void:0x0b1023},
+ vfx:{hit:{shape:'star',colors:[0xa2eee7,0xe4b5f5,0xfff3c2],n:11,glint:true,ring:0xc2d8f8},trail:0xc6e7ff,aura:{prism:true}}});
+SKINS['mr-wake'].push({name:'ABYSSAL CHOIR',sheetSet:'choir',shop:'cos-choir',swatch:0x74d6cc,fx:0x8cebd4,
+ lore:'A drowned cathedral given legs. Lantern bells drift around a bronze reliquary mask; every spell carries a ring of deep-sea light.',
+ pal:{outline:0x091b29,deep:0x1e4356,mid:0x4c8991,light:0x8cebd4,core:0xf4e7ba,shade:0x143041,void:0x030e1c},
+ vfx:{hit:{shape:'ring',colors:[0x8cebd4,0xd9c797,0xb5e8ff],n:10,ring:0x8cebd4},trail:0x6cc7c4,aura:{choir:true}}});
+
+// Theme packs extend existing free skins without changing their positions in saved selections.
+for(const u of SKIN_UPGRADES){
+  const skin=SKINS[u.fighter].find(s=>s.name===u.name);
+  skin.theme=u.key;skin.lore=u.lore;
+  skin.vfx={...skin.vfx,hit:{shape:u.shape,colors:[u.light,u.mid,0xffffff],n:8,glint:true},aura:{...skin.vfx?.aura,theme:u.key},...(u.trail?{trail:u.trail}:{})};
+}
+
 import { getKOs, MILESTONE_KOS, owns } from '../progress.js';
+
+// Miracle shop costume; its established skin index is preserved.
+SKINS['soul-summoner'].push({name:'JUDGMENT',shop:'cos-judgment',sheetSet:'judgment',theme:'judgment',swatch:0x7cddff,fx:0x36d9ff,
+ lore:'Bone-white armour, a midnight-blue cloak and one bright eye. Some souls refuse to let the last word be spoken.',
+ pal:{outline:0x101929,deep:0x194780,mid:0x268bcd,light:0x65e6ff,core:0xf6fdff,shade:0x203457,void:0x050a15},
+ vfx:{aura:{judgment:true},hit:{shape:'pixel2',colors:[0xf4f8ff,0x49dfff,0x6f91c8],n:10,ring:0x42d9ff},trail:0x78dfff,minion:{armor:{to:210,sat:.18,val:1.5},gold:{to:205,sat:.15,val:1.3},flame:{to:190,sat:.6,val:1.3},eyes:{to:185,sat:1,val:1.5}}}});
+
+SKINS['young-link']=[{name:'DEFAULT',swatch:0x3b9c37},{name:'METALLIC BLUE',swatch:0x5a91dc,groups:{clothes:{h:[80,165],s:[.35,1],center:120}},rules:{clothes:{ramp:[0x101c36,0x213b68,0x365b98,0x638ec2,0x9bc5ec,0xe1f2ff],lo:.1,hi:.95}}}];
+SKINS['young-link'].push({name:'SHADOW LINK',solidLinkEyes:true,swatch:0x352c46,groups:{eyes:{h:[208,220],s:[.6,1],v:[.25,.95],center:214},all:{center:0}},rules:{eyes:{ramp:[0x481021,0x96223e,0xf54c66],lo:0,hi:1},all:{ramp:[0x080810,0x181421,0x2d2639,0x4c425b,0x71677f,0xaaa2b5,0xd4cfde],lo:.03,hi:1}}});
+
+
+// Free Fists palettes share the original pixels across every movement and attack strip.
+const FISTS_GROUPS={cloth:{h:[330,360],s:[.35,1],v:[.15,1],center:350},clothWarm:{h:[0,14],s:[.35,1],v:[.15,1],center:4},gloves:{h:[208,238],s:[.35,1],v:[.15,1],center:220}};
+const FISTS_AZURE=[0x112345,0x1b3d70,0x285ba3,0x4285d0,0x83b9f0];
+const FISTS_VIOLET=[0x251334,0x45215d,0x69378d,0x9b5fbc,0xd09ce5];
+SKINS.fists=[{name:'DEFAULT',swatch:0xc92a44},
+ {name:'AZURE',swatch:0x4285d0,fx:0xffd568,groups:FISTS_GROUPS,rules:{cloth:{ramp:FISTS_AZURE,lo:.12,hi:.95},clothWarm:{ramp:FISTS_AZURE,lo:.12,hi:.95},gloves:{ramp:[0x624215,0xa27124,0xd7a83f,0xffdc7b,0xfff2bf],lo:.12,hi:.95}}},
+ {name:'PHANTOM',swatch:0x9b5fbc,fx:0x78f0c5,groups:FISTS_GROUPS,rules:{cloth:{ramp:FISTS_VIOLET,lo:.12,hi:.95},clothWarm:{ramp:FISTS_VIOLET,lo:.12,hi:.95},gloves:{ramp:[0x123d38,0x246b5c,0x3caa8c,0x79e7bd,0xc8ffe4],lo:.12,hi:.95}}}
+];
 
 export function skinsFor(id) { return SKINS[id] || [{ name: 'DEFAULT', swatch: 0xffffff }]; }
 export function skinInfo(id, i) { const s = skinsFor(id); return s[((i || 0) % s.length + s.length) % s.length]; }
@@ -558,21 +617,26 @@ function findEdges(p, W, H, fw, fh, opt) {
 function recolorTexture(scene, key, nk, skin) {
   const tm = scene.textures;
   if (tm.exists(nk)) return nk;
-  const src = tm.get(key), img = src.getSourceImage(), f0 = src.get(0);
+  const src = tm.get(key), f0 = src.get(0);
+  const packed=!!src.customData.mobileAtlas && !skin.edges && skin.outline===undefined && !skin.masterSword;
+  const img=src.customData.mobileAtlas&&!packed?expandPackedTexture(src):src.getSourceImage();
   const cv = document.createElement('canvas');
   cv.width = img.width; cv.height = img.height;
   const ctx = cv.getContext('2d');
   ctx.drawImage(img, 0, 0);
   const data = ctx.getImageData(0, 0, cv.width, cv.height), p = data.data, fn = recolorFn(skin);
-  const edge = skin.edges ? findEdges(p, cv.width, cv.height, f0.width, f0.height, skin.edges) : null;
+  const edge = skin.edges ? findEdges(p, cv.width, cv.height, f0.realWidth, f0.realHeight, skin.edges) : null;
   for (let n = 0; n < p.length; n += 4) {
     if (!p[n + 3]) continue;
     const [r, g, b] = fn(p[n], p[n + 1], p[n + 2]);
     p[n] = r; p[n + 1] = g; p[n + 2] = b;
   }
+  if (skin.masterSword) for (const [x,y,color] of MASTER_SWORD_PATCHES[key] || []) {
+    const n=(y*cv.width+x)*4;p[n]=(color>>16)&255;p[n+1]=(color>>8)&255;p[n+2]=color&255;p[n+3]=255;
+  }
   if (edge) { const c = skin.edges.color; for (let n = 0; n < edge.length; n++) if (edge[n]) { p[n * 4] = (c >> 16) & 255; p[n * 4 + 1] = (c >> 8) & 255; p[n * 4 + 2] = c & 255; } }
   if (skin.outline !== undefined) {                      // 1 px outline around the silhouette, inside each frame
-    const W = cv.width, H = cv.height, fw = f0.width, fh = f0.height, o = skin.outline;
+    const W = cv.width, H = cv.height, fw = f0.realWidth, fh = f0.realHeight, o = skin.outline;
     const a = new Uint8Array(W * H);
     for (let n = 0; n < W * H; n++) a[n] = p[n * 4 + 3] > 0 ? 1 : 0;
     for (let y = 0; y < H; y++) {
@@ -585,8 +649,16 @@ function recolorTexture(scene, key, nk, skin) {
       }
     }
   }
+  if(skin.solidLinkEyes){
+    const eyes=YOUNG_LINK_EYES[key];
+    if(eyes)for(let i=0;i<eyes.length;i++){
+      const frame=src.get(i),trim=frame.data.spriteSourceSize;
+      for(const [x,y] of eyes[i]){const xx=packed?frame.cutX+x-trim.x:frame.cutX+x,yy=packed?frame.cutY+y-trim.y:frame.cutY+y,n=(yy*cv.width+xx)*4;p[n]=255;p[n+1]=0;p[n+2]=0;}
+    }
+  }
   ctx.putImageData(data, 0, 0);
-  tm.addSpriteSheet(nk, cv, { frameWidth: f0.width, frameHeight: f0.height });
+  if(packed)copyPackedFrames(tm,nk,cv,src);
+  else tm.addSpriteSheet(nk, cv, { frameWidth: f0.realWidth, frameHeight: f0.realHeight });
   if (src.has('portrait')) { const pf = src.get('portrait'); tm.get(nk).add('portrait', 0, pf.cutX, pf.cutY, pf.cutWidth, pf.cutHeight); }
   return nk;
 }
@@ -594,7 +666,7 @@ function recolorTexture(scene, key, nk, skin) {
 // All of a fighter's sheets for one skin: { idle, juggle, walk, ... } -> recoloured texture keys.
 export function skinSheets(scene, def, i) {
   const set = skinInfo(def.id, i).sheetSet;
-  if (set && def.costumeSheets && def.costumeSheets[set]) return { ...def.costumeSheets[set] };   // a costume with its own drawn strips
+  if (set && def.costumeSheets && def.costumeSheets[set]) {const out={...def.costumeSheets[set]},anim=PREMIUM_ANIMS[def.id+':'+skinInfo(def.id,i).name];if(anim?.idleKey)out.idle=anim.idleKey;return out;}   // a costume with its own drawn strips
   const out = {};
   for (const [k, key] of Object.entries(def.sheets)) out[k] = skinTexture(scene, key, def.id, i);
   return out;
@@ -641,3 +713,4 @@ export function resolveSkins(picks, wanted) {
   });
   return out;
 }
+

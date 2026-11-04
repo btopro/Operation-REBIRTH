@@ -57,7 +57,7 @@ export class TestFightersScene extends Phaser.Scene {
     this.youText = this.add.text(tx, R.y + R.h - 58, '', { fontFamily: FONT, fontSize: '6px', color: GOLD });   // FIGHT IT: who you play
     // the map: a little picture of it, its name, arrows
     this.mapG = this.add.graphics();
-    const MX = L.x + L.w / 2, MY = L.y + 150;                       // (in the left panel, under the list)
+    const MX = L.x + L.w / 2, MY = L.y + 162;                       // (in the left panel, under the list)
     this.mapLabel = this.add.text(L.x + 10, MY - 12, 'MAP  (E)', { fontFamily: FONT, fontSize: '6px', color: DIM });
     this.mapName = this.add.text(MX, MY + 76, '', { fontFamily: FONT, fontSize: '7px', color: GOLD }).setOrigin(0.5);
     this.mapArrows = [-1, 1].map((d) => makeButton(this, MX + d * 84, MY + 34, d < 0 ? '<' : '>', () => this.stepMap(d), { originX: 0.5, originY: 0.5, size: '8px' }));
@@ -139,7 +139,7 @@ export class TestFightersScene extends Phaser.Scene {
       const on = k === this.mode; slant(c, mt.x - 7 + 2, mt.y - 5 + 2, 104, 17, 0x000000, 0.5, 5);
       slant(c, mt.x - 7, mt.y - 5, 104, 17, on ? LINE : 0x1c2a22, 1, 5); if (on) slant(c, mt.x - 7, mt.y - 5, 104, 7, 0xffffff, 0.2, 2);
     });
-    const mp = this.maps[this.map], mw = 128, mh = 68, mx = L.x + (L.w - mw) / 2, my = L.y + 150, mg = this.mapG;   // the map picker
+    const mp = this.maps[this.map], mw = 128, mh = 68, mx = L.x + (L.w - mw) / 2, my = L.y + 162, mg = this.mapG;   // the map picker
     mg.fillStyle(LINE, 1); mg.fillRect(mx - 2, my - 2, mw + 4, mh + 4); mg.fillStyle(0x0b0a14, 1); mg.fillRect(mx - 1, my - 1, mw + 2, mh + 2);
     if (mp.preview) mp.preview(mg, mx, my, mw, mh);
     else {                                                            // RANDOM: a big question mark

@@ -1,3 +1,5 @@
+import { drawThemeFireball,drawThemeBolt,drawThemeSword,drawThemePool } from './skinThemeFx.js';
+import { drawMasterSwordHilt } from './masterSword.js';
 // Things fighters create: fireballs and summoned souls.
 import { sfx } from '../audio/sfx.js';
 import { skinInfo, minionTexture } from './skins.js';
@@ -82,6 +84,7 @@ export class Fireball {
     const pulse = this.t % 4 < 2 ? 1 : 0;
     g.clear();
     const P = this.owner.pal;
+    if(drawThemeFireball(this,g,x,y,r))return;
     if (this.owner.style === 'onebit') { drawSkull(g, x, y, r + 1, this.dir, this.t); return; }
     g.fillStyle(P.deep, 1); g.fillRect(x - r - pulse, y - r + 1, r * 2 + pulse * 2, r * 2 - 2); g.fillRect(x - r + 1, y - r - pulse, r * 2 - 2, r * 2 + pulse * 2);
     g.fillStyle(P.light, 1); g.fillRect(x - r * 0.65, y - r * 0.65, r * 1.3, r * 1.3);
@@ -134,6 +137,7 @@ export class EnergyBolt {
     const p = this.t % 4 < 2 ? 1 : 0;
     g.clear();
     const P = this.owner.pal;
+    if(drawThemeBolt(this,g,x,y,w,h))return;
     if (this.owner.style === 'rose') {                    // Rosebud: a thrown rose, spinning as it flies
       g.lineStyle(2, P.shade, 1); g.lineBetween(x - this.dir * 4, y, x - this.dir * (w / 2 + 8), y + 2);   // its stem
       drawRose(g, x, y, Math.max(w, h) * 0.55, this.t * 0.3 * this.dir, P);
@@ -182,6 +186,7 @@ export class ShadowPool {
     const g = this.g, grow = Math.min(1, this.t / 10), fade = this.life - this.t < 30 ? (this.life - this.t) / 30 : 1;
     const cx = (this.x1 + this.x2) / 2, half = ((this.x2 - this.x1) / 2) * grow;
     g.clear();
+    if(drawThemePool(this,g,cx,half,fade))return;
     // stepped blob shape: wider at the base, wobbling edge
     const wob = Math.round(Math.sin(this.t * 0.15) * 2);
     const P = this.owner.pal;
@@ -290,7 +295,7 @@ export class ThrownSword {
     this.x = owner.x + owner.facing * 18; this.y = owner.y - 34;
     this.vx = this.dir * spec.speed; this.vy = 0;
     this.phase = 'out'; this.t = 0; this.pt = 0; this.ang = 0; this.alive = true;
-    this.id = nextId++; this.persist = true; this.kind = 'BLADE TOSS';
+    this.id = nextId++; this.persist = true; this.kind = 'BLADE TOSS'; this.soulDamageType='sword';
     this.g = match.add.graphics();
     match.addWorld(this.g);
     sfx('swing', 0.8, 0.7);
@@ -338,6 +343,7 @@ export class ThrownSword {
     if (!this.alive) return;
     const g = this.g, x = this.x, y = this.y, L = 18, c = Math.cos(this.ang), s = Math.sin(this.ang), col = this.owner.fxColor;
     g.clear();
+    if(drawThemeSword(this,g,x,y,L,c,s))return;
     if (this.owner.style === 'onebit') return this.renderOneBit(g, x, y, L, c, s);
     if (this.phase === 'spin') {                    // the blur of the spinning blade and a ring of light
       g.fillStyle(col, 0.16); g.fillCircle(x, y, this.spec.spinR);
@@ -356,7 +362,8 @@ export class ThrownSword {
     g.lineStyle(2, 0xc9c9c9, 1); g.lineBetween(x - c * 3, y - s * 3, tipX, tipY);
     g.lineStyle(1, 0xffffff, 1); g.lineBetween(x, y, tipX - c, tipY - s);
     g.lineStyle(3, this.owner.dragonSpin ? 0xf3c358 : 0x6a7880, 1); g.lineBetween(x - c * 3 - s * 5, y - s * 3 + c * 5, x - c * 3 + s * 5, y - s * 3 - c * 5);   // crossguard
-    g.lineStyle(2, 0x2a2430, 1); g.lineBetween(x - c * 4, y - s * 4, butX, butY);                                                                         // grip
+    g.lineStyle(2, 0x2a2430, 1); g.lineBetween(x - c * 4, y - s * 4, butX, butY);
+    if (skinInfo(this.owner.def.id,this.owner.skin).masterSword) drawMasterSwordHilt(g,x-c*3,y-s*3,c,s);                                                                         // grip
   }
   // 1-BIT Lacy: a white pixel blade with a black edge; spinning, it leaves a ring of black and white
   // blocks and stuttering afterimages, like a frame dropping on an old LCD

@@ -198,7 +198,7 @@ export class AchievementsScene extends Phaser.Scene {
       if (i % 2) { g.fillStyle(0x000000, 0.15); g.fillRect(x0 + 2, y - 2, w - 4, rowH); }
       g.fillStyle(0x140a20, 1); g.fillRect(x0 + 6, y - 1, 26, rowH - 2);
       showFighter(e.spr.setVisible(true), e.r.def, Math.floor((t + i * 9) / 7), 0);
-      e.spr.setScale(Math.min(0.42, (rowH - 4) / e.spr.frame.height * 1.15)).setPosition(x0 + 19, y + rowH - 4);
+      e.spr.setScale(Math.min(0.42, (rowH - 4) / e.spr.frame.realHeight * 1.15)).setPosition(x0 + 19, y + rowH - 4);
       e.name.setPosition(x0 + 40, y + 2);
       e.line.setPosition(x0 + 40, y + 13).setText(played + ' PLAYED   ' + won + ' WON   ' + kos + ' KOS');
       const isMain = ROSTER.some((r) => r.id === id);

@@ -477,7 +477,7 @@ export class FighterLastSeen {
   // ---- no axe (SCREAM used in the air): its art without the axe, loaded the first time it's needed, for 'frames'
   unarmedKeys() {
     const set = skinInfo(this.def.id, this.skin).sheetSet, sets = this.def.costumeSheets || {};
-    const pre = set && sets[set] ? 'ls_wrong_' + set + '_noaxe_' : 'ls_wrong_noaxe_', dir = set && sets[set] ? 'wrong/' + set + '/noaxe/' : 'wrong/noaxe/';
+    const pre = set && sets[set] ? 'ls_wrong_' + set + '_noaxe_' : 'ls_wrong_noaxe_', dir = set==='bunny' ? 'bunny/wrong/noaxe/' : set && sets[set] ? 'wrong/' + set + '/noaxe/' : 'wrong/noaxe/';
     return { pre, dir, own: !!(set && sets[set]) };
   }
   loseAxe(frames) {

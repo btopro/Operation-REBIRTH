@@ -1,3 +1,8 @@
+import {fistsPose} from './fistsAnimation.js';
+import {drawYoungLinkSpecial} from './youngLinkSpecials.js';
+import {youngLinkPose} from './youngLinkAnimation.js';
+import {premiumPose} from './premiumAnimations.js';
+import {syncAzureCape} from './azureCape.js';
 // Fighter methods: Drawing: animation frames, sprites, costume auras, trails, battle-worn stages.
 // Mixed into the Fighter class (Fighter.js) - `this` is the fighter.
 import { PLAYER_TINTS } from '../config.js';
@@ -81,7 +86,7 @@ export class FighterRender {
         return { sheet: S.grab, frame: 8 };                     // follow-through: hand out, sword gone
       }
       case 'holding': return S.grab ? { sheet: S.grab, frame: this.t < 4 ? 3 : 4 } : { sheet: S.attack2, frame: 0 };   // grip, then hold them at arm's length
-      case 'counter': return { sheet: S.guard || S.attack2, frame: 0 };      // crouched guard, sword angled down toward the opponent
+      case 'counter': return { sheet: S.counter || S.guard || S.attack2, frame: S.counter ? (this.t < 5 ? 0 : this.t <= 28 ? 1 : 2) : 0 }; // upright chest-height sword guard
       case 'counterstrike': return this.t < 2 ? { sheet: S.attack2, frame: 2 } : once('attack2', this.t - 2 + 6, 26);
       case 'limit': {
         const L = this.def.limit, U = this.ult;
@@ -114,6 +119,7 @@ export class FighterRender {
   // Which of def.moveAnims plays in this state (null: none, fall back to the idle-based poses).
   moveAnimKey(s) {
     const A = this.def.moveAnims;
+    if (this.def.id==='young-link' && s==='holding' && this.pummelCd>0) return 'pummel';
     const k = s === 'attack' ? (this.moveName === 'throw' ? 'throw_' + this.throwDir : this.moveName)
       : s === 'dizzy' ? 'hitstun' : s === 'seized' ? 'grabbed' : s === 'axecharge' && Math.abs(this.vx) > 0.3 && A.axecharge_walk ? 'axecharge_walk' : s;
     return A[k] ? k : null;
@@ -122,7 +128,7 @@ export class FighterRender {
   // ------------------------------------------------------------------ drawing
   render(frameCount) {
     const spr = this.sprite, g = this.fx, d = this.def;
-    g.clear(); this.fxBack.clear();
+    g.clear(); this.fxBack.clear();this.azureCape?.setVisible(false);this.premiumAnimation=null;this.premiumAnimProgress=0;
     if (!this.alive) return;
     this.anim++;
     spr.setPosition(Math.round(this.x), Math.round(this.y));
@@ -130,7 +136,7 @@ export class FighterRender {
     spr.setRotation(0); spr.setScale(1, 1); spr.setAlpha(1);
 
     const alt = this.sheets.juggle || this.sheets.idle;   // pose sheet (fighters without one reuse their idle frames)
-    let sheet = this.sheets.idle, frame = Math.floor(this.anim / 6) % 32;
+    let sheet = this.sheets.idle, frame = Math.floor(this.anim / 6) % (d.frameCounts?.idle || 32);
     const s = this.state;
     if (s !== 'run') this.runPhase = 0;
     if (s === 'run' && this.sheets.run && !d.ownAnims) {   // run: straight into the stride (frames 3-7) the moment he moves, faster at speed
@@ -160,7 +166,7 @@ export class FighterRender {
     }
     else if (s === 'summon') { sheet = alt; frame = this.t < 20 ? 2 : 12; spr.setScale(1, this.t < 20 ? 0.94 : 1.04); }
     else if (s === 'upb') { frame = 6; spr.setScale(0.92, 1.12); }
-    else if (s === 'limit') { sheet = alt; frame = 12; if (!['undertow', 'wall', 'screensaver', 'level0', 'turn', 'approach', 'birthday', 'barrage'].includes(d.limit.type)) spr.y -= Math.min(16, this.t / 2); }
+    else if (s === 'limit') { sheet = alt; frame = 12; if (!['spirits', 'undertow', 'wall', 'screensaver', 'level0', 'turn', 'approach', 'birthday', 'barrage'].includes(d.limit.type)) spr.y -= Math.min(16, this.t / 2); }
     else if (s === 'roll' || s === 'spotdodge') spr.setAlpha(0.55);
     else if (s === 'ledge') { frame = 6; spr.setRotation(-0.12 * this.facing); }
     else if (s === 'ledgeclimb' || s === 'ledgeattack') { frame = s === 'ledgeattack' && this.t >= 14 ? 3 : 6; if (s === 'ledgeattack' && this.t >= 14) sheet = alt; spr.setScale(1, this.t < 6 ? 1.08 : 1); }
@@ -169,10 +175,16 @@ export class FighterRender {
     else if (s === 'grabbed' || s === 'seized') { frame = 10; spr.setRotation(-0.2 * this.facing); }
     if (this.hurtAnim > 0) this.hurtAnim--;
     const ma = !d.ownAnims && d.moveAnims && this.sheets.moves && this.moveAnimKey(s);
-    if (ma) {                                  // a drawn animation for this move: it carries its own lean and squash
-      const [from, n, step, loop] = d.moveAnims[ma], i = Math.floor(this.t / step);
+    if (ma && d.id !== 'young-link') {                                  // a drawn animation for this move: it carries its own lean and squash
+      const [from, n, step, loop] = d.moveAnims[ma], i = Math.floor((d.id==='young-link' && ma==='pummel' ? 12-this.pummelCd : this.t) / step);
       sheet = this.sheets.moves; frame = from + (loop ? i % n : Math.min(n - 1, i));
       spr.setRotation(0); spr.setScale(1, 1);
+    }
+    if (d.id === 'young-link') {
+      if(s==='limit'&&d.limit.triangle)spr.y=Math.round(this.y);
+      const pose=youngLinkPose(this);sheet=pose.sheet;frame=pose.frame;
+      spr.setRotation(0).setScale(1,1);
+      if (s === 'attack' && (this.moveName === 'bair' || this.moveName === 'throw' && this.throwDir === 'back')) spr.setFlipX(!spr.flipX);
     }
     if (s === 'taunt' && this.sheets.taunt && d.taunt && d.taunt.anim) {   // a taunt with its own drawn strip (def.taunt.anim)
       const [n, step] = d.taunt.anim;
@@ -187,13 +199,14 @@ export class FighterRender {
       if (a.flip) spr.setFlipX(!spr.flipX);
       this._animFlip = !!a.flip;
     }
+    if(d.id==='fists'){const pose=fistsPose(this);sheet=pose.sheet;frame=pose.frame;spr.setRotation(0).setScale(1,1);spr.y=Math.round(this.y);if(s==='attack'&&(this.moveName==='bair'||this.moveName==='throw'&&this.throwDir==='back'))spr.setFlipX(!spr.flipX);}
+    const cosmetic=premiumPose(this);
+    if(cosmetic){sheet=cosmetic.sheet;frame=cosmetic.frame;spr.setRotation(0).setScale(1,1);this.premiumAnimation=cosmetic.kind;this.premiumAnimProgress=cosmetic.progress;}
     if (spr.texture.key !== sheet) spr.setTexture(sheet, frame); else spr.setFrame(frame);
     this.curSheet = sheet; this.curFrame = frame; this.curFlip = d.ownAnims && !!this._animFlip;   // (what's drawn: Lacy's hurtbox follows it)
     if (d.float && d.float.hover && !['grabbed', 'seized', 'ledge', 'ledgeclimb', 'respawn'].includes(s)) spr.y -= Math.round(d.float.hover + 2 * Math.sin(this.anim * 0.07));   // floating off the ground
-    {                                          // where the feet are in the frame (the move frames are bigger, so theirs sit elsewhere)
-      const mo = d.movesOrigin && sheet === this.sheets.moves ? d.movesOrigin : [d.originX ?? 0.5, d.originY ?? spr.originY];
-      // a flipped sprite is mirrored about the middle of its frame, so an off-centre origin has to be mirrored too -
-      // otherwise a fighter whose feet aren't in the middle of the frame (Lacy, Mr Wake) is drawn off from where they are
+    { // Preserve frame-specific cosmetic anchors and upstream mirrored foot alignment.
+      const mo = cosmetic ? cosmetic.origin : d.movesOrigin && sheet === this.sheets.moves ? d.movesOrigin : [d.originX ?? 0.5, d.originY ?? spr.originY];
       const ox = spr.flipX ? 1 - mo[0] : mo[0];
       if (spr.originX !== ox || spr.originY !== mo[1]) spr.setOrigin(ox, mo[1]);
     }
@@ -201,7 +214,7 @@ export class FighterRender {
     // hit flash and invincibility blink
     if (this.silhouette > 0) { this.silhouette--; spr.setTint(0x120e1c).setTintMode(Phaser.TintModes.FILL); }    // frozen by a counter
     else if (this.flash > 0) { this.flash--; spr.setTint(0xffffff).setTintMode(Phaser.TintModes.FILL); }
-    else { spr.setTint(this.possessed > 0 ? (this.anim % 16 < 8 ? 0xb07ad0 : 0x8a5ad0) : this.curse > 0 ? 0xb07ad0 : this.slow > 0 ? 0x8a80b0 : this.shaken > 0 ? (this.anim % 20 < 10 ? 0xd09a9a : 0xb88a8a) : PLAYER_TINTS[this.slot]).setTintMode(Phaser.TintModes.MULTIPLY); }
+    else { spr.setTint(this.possessed > 0 ? (this.anim % 16 < 8 ? 0xb07ad0 : 0x8a5ad0) : this.curse > 0 ? 0xb07ad0 : this.slow > 0 ? 0x8a80b0 : this.shaken > 0 ? (this.anim % 20 < 10 ? 0xd09a9a : 0xb88a8a) : (this.soulTint||PLAYER_TINTS[this.slot])).setTintMode(Phaser.TintModes.MULTIPLY); }
     if (this.star > 0 && !this.silhouette && !this.flash) {         // Star Candy: cycling through every colour, sparkling
       const c = Phaser.Display.Color.HSVToRGB(((this.anim * 8) % 360) / 360, 0.55, 1);
       spr.setTint(Phaser.Display.Color.GetColor(c.r, c.g, c.b)).setTintMode(Phaser.TintModes.MULTIPLY);
@@ -213,6 +226,8 @@ export class FighterRender {
       if (U.phase === 'melt') { const k = Math.min(1, this.t / d.limit.melt); spr.setScale(1 + k * 0.6, 1 - k * 0.92); spr.setTint(this.pal.shade).setTintMode(Phaser.TintModes.FILL); }
       else spr.setAlpha(0);
     } else if (this.reform > 0) { this.reform--; spr.setScale(1 + this.reform * 0.03, 1 - this.reform * 0.055); }
+    if(this.azureCape)syncAzureCape(this.azureCape,spr,this.anim,Math.abs(this.vx+this.lx)>1);
+    if(d.id==='young-link')drawYoungLinkSpecial(this,g);
     if (this.vfx) { this.drawSkinAura(g); this.drawTrail(spr); }
     if (s === 'swingcharge') {                      // Grand Slam: a glowing point at the blade's tip, swelling with the charge
       const C = d.moves.neutralB.charge, k = this.swingCharge / C.max, full = k >= 1;
@@ -310,7 +325,7 @@ export class FighterRender {
     if (this.rage > 0 && this.anim % 3 === 0) this.match.particles.push({ x: this.x + (Math.random() - 0.5) * this.body.w, y: this.y - Math.random() * this.body.h, vx: 0, vy: -1 - Math.random(), life: 14, color: Math.random() < 0.5 ? 0xff4a3a : 0xffa030, size: 2, grav: 0 });   // RAGE MODE flames
     // Riposte: a glint on the raised guard, then a burst of light rays and a long slash when it counters
     if (s === 'counter' && this.counterReady()) {
-      const gx = this.x + this.facing * 44, gy = this.y - 19, tw = this.t - d.moves.counter.start;   // glint on the lowered blade
+      const gx = this.x + this.facing * 18, gy = this.y - 50, tw = this.t - d.moves.counter.start;   // glint on the chest-height blade
       g.fillStyle(0xe0f4ff, tw < 6 ? 1 : 0.55); g.fillRect(gx - 1, gy - 6, 2, 12); g.fillRect(gx - 6, gy - 1, 12, 2);
       if (tw < 6) { g.fillStyle(0x9ad8f0, 0.5); g.fillRect(gx - 9, gy, 18, 1); g.fillRect(gx, gy - 9, 1, 18); }
       g.fillStyle(0x9ad8f0, 0.12 + 0.08 * Math.sin(this.anim * 0.6)); g.fillEllipse(this.x, this.y - 26, 40, 58);
@@ -497,3 +512,4 @@ export class FighterRender {
     }
   }
 }
+
