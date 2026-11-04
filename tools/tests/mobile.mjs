@@ -26,14 +26,14 @@ try{
   const {skinSheets,skinsFor}=await import('/src/fighters/skins.js');const bitIndex=skinsFor('soul-summoner').findIndex(s=>s.name==='1-BIT'),bit=skinSheets(m,enemy.def,bitIndex),bitMoves=m.textures.get(bit.moves);if(bitMoves.get(0).realWidth!==112||bitMoves.customData.mobileAtlas)throw Error('Outlined costume grid fallback failed');
   m.particles=Array.from({length:700},()=>({x:0,y:0,vx:0,vy:0,life:100}));m.stepEffects();if(m.particles.length>120)throw Error('Phone particle budget failed');
   f.setState('attack');f.moveName='neutralB';f.move=f.def.moves.neutralB;f.t=20;m.draw();
-  const packed=Object.values(window.game.textures.list).filter(t=>t.customData?.mobileAtlas).length;
+  const packed=Object.values(window.game.textures.list).filter(t=>t.customData?.mobileAtlas).length,{MOBILE_ATLASES}=await import('/src/mobileAtlasManifest.js'),unpacked=Object.keys(MOBILE_ATLASES).filter(k=>window.game.textures.exists(k)&&!window.game.textures.get(k).customData?.mobileAtlas);
   f.placeAt(0,0);f.facing=1;f.grounded=true;enemy.placeAt(180,0);enemy.invincible=0;enemy.percent=0;f.setState('limit');let flight=0;for(let t=1;t<90;t++){f.t=t;f.st_limit();m.draw();if(f.ult?.phase==='flight'){flight++;if(f.sprite.y!==Math.round(f.y))throw Error('Triangle hand origin drifted');}if(f.ult?.phase==='cutscene')break;}if(!flight||f.ult?.phase!=='cutscene')throw Error('Mobile triangle failed to capture');f.endBladeLimit();
   const {checkLinkCompanion}=await import('/tools/tests/link-companion-check.js'),companion=await checkLinkCompanion(m,f,skinSheets);
-  return {companion,phone:PHONE_DEVICE,packed,poses,particles:m.particles.length,touch:!!m.touchPad,audio:window.game.sound.constructor.name,canvas:[window.game.canvas.width,window.game.canvas.height]};
+  return {companion,phone:PHONE_DEVICE,packed,unpacked,poses,particles:m.particles.length,touch:!!m.touchPad,audio:window.game.sound.constructor.name,canvas:[window.game.canvas.width,window.game.canvas.height]};
  });
  const cdp=await page.context().newCDPSession(page),button=await page.evaluate(()=>{const r=window.game.canvas.getBoundingClientRect();return {x:r.x+r.width*594/640,y:r.y+r.height*258/360};});
  await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{id:1,x:button.x,y:button.y}]});await page.waitForTimeout(50);
  const touch=await page.evaluate(()=>{const m=window.game.scene.getScene('Match'),f=m.fighters[0];f.setState('idle');f.grounded=true;f.hitstop=0;f.ctrl.beginFrame();f.ctrl.poll();f.step();return {held:f.ctrl.held('attack'),move:f.moveName};});assert.ok(touch.held);assert.equal(touch.move,'jab');await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
  await page.waitForTimeout(80);await page.screenshot({path:'recordings/test-output/mobile-match.png'});
- assert.deepEqual(errors,[]);assert.ok(phone.packed>=60);console.log('PASS',JSON.stringify(phone));
+ assert.deepEqual(errors,[]);assert.ok(phone.packed>=20,'packed atlases in use: '+phone.packed);assert.deepEqual(phone.unpacked,[],'loaded sheets that have a packed atlas but were loaded as full grids');console.log('PASS',JSON.stringify(phone));
 }finally{await browser.close();await server.close();}

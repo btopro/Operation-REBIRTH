@@ -1,5 +1,6 @@
 import {makeOriginalSoulPortraits,SOUL_ATLASES} from '../souls/portraits.js';
 import {installMobileTextures} from '../mobileTextures.js';
+import {deferCostumeSheets} from '../fighters/lazySheets.js';
 import {PREMIUM_ANIMS} from '../fighters/premiumAnimsData.js';
 import {CHARACTER_SPEECH,CHARACTER_NAME_CALLS,FIGHTER_ANNOUNCER_IDS} from '../audio/speechPolicy.js';
 import {KEEPER_SCAR_ASSET,NOLI_TAP_FACE_ASSET} from '../data/shopFacePolicy.js';
@@ -19,6 +20,7 @@ export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
   preload() {
     installMobileTextures(this);
+    deferCostumeSheets(this);   // costume strips other than idle load per match (src/fighters/lazySheets.js)
     for(const k of ['idle','walk','run','jump','fall'])this.load.spritesheet('fists_'+k,'assets/fighters/fists/'+k+'_sheet.png',{frameWidth:96,frameHeight:96});
     this.load.spritesheet('fists_moves','assets/fighters/fists/moves_sheet.png',{frameWidth:192,frameHeight:192});
     for(const id of ['bill-cipher','shadow-young-link'])this.load.audio('soul_music_'+id,['assets/audio/soul-battles/'+id+'.ogg','assets/audio/soul-battles/'+id+'.mp3']);
