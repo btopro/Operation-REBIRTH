@@ -49,6 +49,15 @@ const knownMusic = (() => {
   return names;
 })();
 
+// soul pictures that the game uses as baked 96 px sheets (src/souls/portraits.js SOUL_ATLASES)
+const soulSheets = await import(new URL('../../src/souls/portraits.js', import.meta.url).href).then((m) => m.SOUL_ATLASES || []).catch(() => []);
+const changed = new Set(files);
+for (const a of soulSheets) {
+  const pic = 'public/assets/souls/' + a.file, sheet = 'public/assets/souls/baked/' + a.key + '.png';
+  if (!all && changed.has(pic) && fs.existsSync(pic) && !changed.has(sheet)) err(pic, `changed, but its portrait sheet ${sheet} wasn't re-baked - run \`npm run bake:souls\` (the game only loads the sheet).`);
+  if (!fs.existsSync(sheet)) err(sheet, `is missing - run \`npm run bake:souls\`.`);
+}
+
 for (const f of files) {
   if (!fs.existsSync(f) || !/^(public|src)\//.test(f)) continue;
   const ext = path.extname(f).toLowerCase(), size = fs.statSync(f).size;
