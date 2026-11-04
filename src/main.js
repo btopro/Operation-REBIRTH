@@ -1,3 +1,5 @@
+import './phaser-global.js';                         // must stay the first import: sets the global Phaser
+import './fonts/fonts.css';                          // the pixel font, served with the game (no Google Fonts request)
 import {SoulUpgradeScene} from './scenes/SoulUpgradeScene.js';
 import {SoulEvolutionScene} from './scenes/SoulEvolutionScene.js';
 import {SoulRewardScene} from './scenes/SoulRewardScene.js';

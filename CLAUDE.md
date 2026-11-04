@@ -9,7 +9,7 @@ Keyboard + gamepad + touch. Stages float in the sky with hazards; items drop mid
 Owner: Mason (artist; does the sprites and design). Live build: https://kobrabro12.github.io/Operation-REBIRTH/
 
 ## Stack
-- **Phaser 4.2.1** loaded from CDN in `index.html` (global `Phaser`, not imported). Vite 6 for dev/build.
+- **Phaser 4.2.1** from npm, bundled into its own chunk; `src/phaser-global.js` (main.js's first import) sets the global `Phaser` the game's files use, so don't import it elsewhere. Vite 6 for dev/build. The pixel font is self-hosted (`src/fonts/`). No CDN or Google Fonts requests: the game is fully same-origin.
 - Plain ES modules, no TypeScript, no framework.
 - `npm run dev` → http://localhost:5173. `npm run build` → `dist/`, then rewrites dist's PNGs as exact palette PNGs (same pixels, ~60% smaller; `tools/build/optimize-png.mjs`, ~1 min). `SKIP_PNG_OPTIMIZE=1 npm run build` skips it. Sources in `public/` are never changed.
 - Every push to `main` auto-deploys to GitHub Pages (`.github/workflows/deploy-pages.yml`). Treat `main` as live.
