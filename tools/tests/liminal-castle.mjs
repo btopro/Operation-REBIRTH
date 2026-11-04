@@ -20,7 +20,8 @@ try{
   const {settings}=await import('/src/settings.js'),{STAGES,stageLocked}=await import('/src/stage/stages.js'),{MatchScene}=await import('/src/scenes/MatchScene.js');MatchScene.prototype.update=function(){};const def=STAGES.find(s=>s.id==='endless-castle');if(!def||stageLocked(def))throw Error('Stage missing/locked');
   for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);Object.assign(settings,{mode:'stock',stocks:2,cpuCount:1,extraPads:[],p1Pad:null,picks:['young-link','soul-summoner'],skins:[0,0],stage:def.id,track:'auto',hazards:true,items:false,crt:false});
   const m=await new Promise(resolve=>{const m=window.game.scene.getScene('Match');m.events.once('create',()=>resolve(m));window.game.scene.start('Match');}),stage=m.stage;
-  if(!m.sound.sounds.some(s=>!s.pendingRemove&&s.key==='bgm_endless_castle'&&s.loop&&(s.isPlaying||s.pendingPlay)))throw Error('Uploaded castle music not looping');
+  const {musicState}=await import('/src/audio/music.js'),music=musicState();   // (music streams: ask music.js, not Phaser's sound list)
+  if(!(music.key==='bgm_endless_castle'&&music.loop&&(music.playing||music.pending)))throw Error('Uploaded castle music not looping');
   if(stage.platforms.length!==4||stage.spawns.length!==4)throw Error('Layout missing');for(const spawn of stage.spawns)if(!stage.platforms.some(p=>p.solid&&spawn.x>=p.x1&&spawn.x<=p.x2&&spawn.y===p.y))throw Error('Unsafe spawn');
   for(let i=0;i<7200;i++)if(stage.step(m).length)throw Error('Stage generated a hazard');
   const f=m.fighters[0],c=f.ctrl;c.down=false;for(const [x,y] of [[-160,0],[180,-68],[-180,-104],[160,-164]]){f.placeAt(x,y-4);f.grounded=false;f.vy=6;f.ly=0;f.lx=0;f.x=x;f.y=y+1;f.platform=null;f.collide(x,y-4,c);if(!f.grounded||f.y!==y)throw Error('Landing failed at '+x+','+y);}
