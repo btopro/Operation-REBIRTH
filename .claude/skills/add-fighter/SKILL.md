@@ -51,6 +51,7 @@ For a new Limit type, add a `<type>Limit()` method in a new `limit<Name>.js` and
 
 ## 3. Art
 - Sheets go in `public/assets/fighters/<id>/` (`idle_sheet.png`, `run_sheet.png`, `moves_sheet.png`, ..., `icon.png`).
+  Always PNG, referenced by the `.png` path: the build shrinks it (palette, or WebP for art over 256 colours) - see the images rule in CLAUDE.md.
 - If the art is generated, add `tools/sprites/<name>_moves.py` that also writes `src/fighters/<xx>Moves.js`
   (`move: [firstFrame, count, ticksPerFrame, loops?]`). That file is generated: never hand-edit it.
 - Hook it up with `moveAnims: XX_MOVES` and `frameCounts` in the def.
