@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node tools/build/sw.mjs",
     "preview": "vite preview",
     "check": "npm run lint && npm run check:docs && npm run check:assets",
     "check:full": "npm run check && npm run build && npm run check:budget && npm test",
