@@ -11,7 +11,7 @@ Owner: Mason (artist; does the sprites and design). Live build: https://kobrabro
 ## Stack
 - **Phaser 4.2.1** loaded from CDN in `index.html` (global `Phaser`, not imported). Vite 6 for dev/build.
 - Plain ES modules, no TypeScript, no framework.
-- `npm run dev` → http://localhost:5173. `npm run build` → `dist/`.
+- `npm run dev` → http://localhost:5173. `npm run build` → `dist/`, then rewrites dist's PNGs as exact palette PNGs (same pixels, ~60% smaller; `tools/build/optimize-png.mjs`, ~1 min). `SKIP_PNG_OPTIMIZE=1 npm run build` skips it. Sources in `public/` are never changed.
 - Every push to `main` auto-deploys to GitHub Pages (`.github/workflows/deploy-pages.yml`). Treat `main` as live.
 - The claude.ai playable copy (an artifact built from `dist/`) holds at most 511 files, so it leaves out the `.mp3` copies of the music (`assets/audio/music/*.mp3`), the announcer (`assets/audio/voice/*.mp3`), the sfx (`assets/audio/sfx/*.mp3`) and of new clips - browsers there play the `.ogg`. It also leaves out `assets/shop/rtd.mp3`, `assets/shop/still_life.mp4` (the `.ogg` / `.webm` play), the home-screen icons + `manifest.webmanifest`, NOLI's 27 voice clips (`assets/shop/noli_voice/*.ogg` - NOLI just goes quiet there), the unused costume `icon.png`s (only `soul-summoner`, `mr-wake` and `hero-knight/icon.png` are loaded) `soul-summoner/walk_sheet.png` and the announcer's RANDOM (`assets/audio/voice/random.ogg`). It's at the 511 limit: anything new must replace something. Small images can instead be inlined into the JS bundle with a Vite `?inline` import from `src/` (done for the SOUL HEART, the shop's flag emblem and SCORCHED EARTH's small strips).
 

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import fs from 'node:fs';
 import path from 'node:path';
+import { optimizePngPlugin } from './tools/build/optimize-png.mjs';
 
 // Voice Studio (voice-studio.html, dev server only): saves each recorded announcer line the page POSTs to
 // /__voice/<id> as recordings/voice/<id>.<ext> in this folder, ready to be turned into game audio by
@@ -32,5 +33,7 @@ function voiceStudio() {
 // GitHub Pages' https://<user>.github.io/Operation-REBIRTH/ address.
 export default defineConfig({
   base: './',
-  plugins: [voiceStudio()],
+  // optimizePngPlugin: after a build, rewrites dist/'s PNGs as exact palette PNGs (same pixels, smaller
+  // files; tools/build/optimize-png.mjs). Set SKIP_PNG_OPTIMIZE=1 for a quick unoptimized build.
+  plugins: [voiceStudio(), optimizePngPlugin()],
 });
