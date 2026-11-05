@@ -4,6 +4,7 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { optimizePngPlugin } from './tools/build/optimize-png.mjs';
 import { webpPlugin } from './tools/build/webp.mjs';
+import { mp3Plugin } from './tools/build/mp3.mjs';
 
 // Voice Studio (voice-studio.html, dev server only): saves each recorded announcer line the page POSTs to
 // /__voice/<id> as recordings/voice/<id>.<ext> in this folder, ready to be turned into game audio by
@@ -44,7 +45,9 @@ export default defineConfig({
   // files; tools/build/optimize-png.mjs). Set SKIP_PNG_OPTIMIZE=1 for a quick unoptimized build.
   // webpPlugin: images over 256 colours also get a smaller .webp in dist/, which src/webp.js loads instead
   // (lossless, same pixels; tools/build/webp.mjs). SKIP_WEBP=1 skips it.
-  plugins: [voiceStudio(), optimizePngPlugin(), webpPlugin()],
+  // mp3Plugin: audio is kept as .ogg only; this makes each one's .mp3 copy for Safari in dist/ (and in the
+  // dev server on request; tools/build/mp3.mjs). SKIP_MP3=1 skips it.
+  plugins: [voiceStudio(), optimizePngPlugin(), webpPlugin(), mp3Plugin()],
   // Phaser in its own file: it changes far less often than the game, so after an update players'
   // browsers can keep the copy they have and only fetch the game's code again.
   // terser squeezes the code ~4% smaller than Vite's default minifier (about 15 KB gzipped off Phaser).
