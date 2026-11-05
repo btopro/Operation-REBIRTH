@@ -13,7 +13,7 @@ try{
   const index=skinsFor('hero-knight').findIndex(s=>s.name==='HYLIAN HERO');MatchScene.prototype.update=function(){};
   for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);
   Object.assign(settings,{mode:'stock',stocks:3,cpuCount:1,difficulty:0,extraPads:[],p1Pad:null,picks:['hero-knight','mr-wake'],skins:[index,0],stage:'sky-sanctum',items:false,hazards:false});
-  window.game.scene.start('Match');await new Promise(r=>setTimeout(r,250));const m=window.game.scene.getScene('Match');m.countdown=0;m.intros=null;m.bigText.setText('');for(let i=0;i<20;i++)m.tick();m.draw();
+  window.game.scene.start('Match');await new Promise(r=>setTimeout(r,250));while(!window.game.scene.isActive('Match')||!window.game.scene.getScene('Match').fighters?.length)await new Promise(r=>setTimeout(r,30));const m=window.game.scene.getScene('Match');m.countdown=0;m.intros=null;m.bigText.setText('');for(let i=0;i<20;i++)m.tick();m.draw();
   const f=m.fighters[0];const pixels=img=>{const cv=document.createElement('canvas');cv.width=img.width;cv.height=img.height;const c=cv.getContext('2d');c.drawImage(img,0,0);return c.getImageData(0,0,cv.width,cv.height).data;};
   let patchesCorrect=true,bodyAlphaPreserved=true,helmetProtected=true,strips=0;
   for(const [key,patches] of Object.entries(MASTER_SWORD_PATCHES)){

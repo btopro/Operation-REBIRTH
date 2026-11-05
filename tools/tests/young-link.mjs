@@ -17,7 +17,7 @@ try{
   for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);
   window.game.scene.start('TestFighters');await new Promise(r=>setTimeout(r,100));const lab=window.game.scene.getScene('TestFighters');lab.sel=TEST_ROSTER.findIndex(r=>r.id==='young-link');lab.update();
   if(!lab.notes.text.includes('GREGARLINK10'))throw Error('Missing visible art credit');
-  window.game.scene.stop('TestFighters');Object.assign(settings,{mode:'stock',stocks:3,picks:['young-link','hero-knight'],skins:[0,0],cpuCount:1,p1Pad:null,extraPads:[],stage:'gravemoon-bridge',items:false,hazards:false,crt:false});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,150));const m=window.game.scene.getScene('Match'),f=m.fighters[0],rival=m.fighters[1];
+  window.game.scene.stop('TestFighters');Object.assign(settings,{mode:'stock',stocks:3,picks:['young-link','hero-knight'],skins:[0,0],cpuCount:1,p1Pad:null,extraPads:[],stage:'gravemoon-bridge',items:false,hazards:false,crt:false});window.game.scene.start('Match');await new Promise(r=>setTimeout(r,150));while(!window.game.scene.isActive('Match')||!window.game.scene.getScene('Match').fighters?.length)await new Promise(r=>setTimeout(r,30));const m=window.game.scene.getScene('Match'),f=m.fighters[0],rival=m.fighters[1];
   if(f.def.id!=='young-link'||m.intros.list[0].I.kind!=='drop')throw Error('Wrong fighter/intro');
   m.countdown=0;m.intros.g.clear();m.intros=null;m.bigText.setText('');f.placeAt(-60,0);f.grounded=true;f.platform=m.stage.platforms[0];rival.placeAt(110,0);
   const {skinSheets,skinInfo,skinUnlocked}=await import('/src/fighters/skins.js');
