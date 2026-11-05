@@ -134,3 +134,9 @@ export function matchPicks(S, how = {}) {
   visit(0, []);
   return out;
 }
+
+/** True when a fighter in a costume would have strips to load first (used to keep the title demo instant). */
+export function needsLoading(scene, id, skin) {
+  const G = costumeGroups();
+  return groupsFor(id, skin).some((g) => (G.get(g) || []).some((k) => deferred.has(k) && !scene.textures.exists(k)));
+}

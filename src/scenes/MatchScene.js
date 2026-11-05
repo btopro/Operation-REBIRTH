@@ -41,8 +41,8 @@ function demoSettings() {
 }
 
 import { playMusic, playPlaylist, stopMusic } from '../audio/music.js';
-import { resolveSkins } from '../fighters/skins.js';
-import { queueSheets, matchPicks } from '../fighters/lazySheets.js';
+import { resolveSkins, skinUnlocked } from '../fighters/skins.js';
+import { queueSheets, matchPicks, needsLoading } from '../fighters/lazySheets.js';
 import { VIEW_W, VIEW_H, STEP_MS, FONT, PHYS, LIMIT_MAX, DIFFICULTY } from '../config.js';
 import { settings, MODE_NAMES, demoRequest } from '../settings.js';
 import { KeyboardController, GamepadController, MergedController, readPad } from '../input/controllers.js';
@@ -76,7 +76,19 @@ export class MatchScene extends Phaser.Scene {
     const data = this.sys.settings.data || {};
     const soul = data.soulBattle && soulEncounter(data.soulBattle.soulId);
     const demo = !data.shopPreview && !soul && demoRequest.next;
-    if (demo && !demoRequest.settings) demoRequest.settings = demoSettings();
+    if (demo && !demoRequest.settings) {
+      demoRequest.settings = demoSettings();
+      // the title demo only wears costumes that are already loaded: it starts at once, downloads nothing,
+      // and is never still loading when the player presses START (that left a half-started match behind)
+      const D = demoRequest.settings;
+      const used = {};
+      D.skins = D.picks.map((id, i) => {
+        const u = used[id] || (used[id] = new Set()), n = skinsFor(id).length;
+        let sk = D.skins[i];
+        for (let k = 0; k < n && (needsLoading(this, id, sk) || u.has(sk) || !skinUnlocked(id, sk)); k++) sk = (sk + 1) % n;   // (a different one for each copy of a fighter, as resolveSkins wants)
+        u.add(sk); return sk;
+      });
+    }
     const S = (soul && data.soulBattle.setup) || data.shopPreview?.setup || (demo ? demoRequest.settings : settings);
     queueSheets(this, matchPicks(S, { demo, shopPreview: !!data.shopPreview, soulSkin: soul ? soul.skin || 0 : undefined }), { evict: true });
   }
