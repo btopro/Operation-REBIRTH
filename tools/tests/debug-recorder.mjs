@@ -1,7 +1,7 @@
 // DEBUG RECORDING end to end: plays a recorded training match in headless Chrome with real key presses,
 // marks a bug (with a note), saves the .zip, then replays it with tools/replay/replay.mjs - which must
 // match the recording at every checkpoint. If this fails after a change, recordings can no longer be
-// replayed: usually match logic started using real time or a timer (CLAUDE.md: Testing).
+// replayed: usually match logic started using real time or a timer (AGENTS.md: Testing).
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';

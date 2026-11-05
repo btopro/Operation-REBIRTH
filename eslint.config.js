@@ -18,8 +18,8 @@ const bugRules = {
 // Same seed = same match (npm run sim, replays): match logic runs on frame counts and Math.random only.
 const noRealTime = {
   'no-restricted-properties': ['error',
-    { object: 'Date', property: 'now', message: 'Match logic must use frame counts, not real time (CLAUDE.md: Testing).' },
-    { object: 'performance', property: 'now', message: 'Match logic must use frame counts, not real time (CLAUDE.md: Testing).' }],
+    { object: 'Date', property: 'now', message: 'Match logic must use frame counts, not real time (AGENTS.md: Testing).' },
+    { object: 'performance', property: 'now', message: 'Match logic must use frame counts, not real time (AGENTS.md: Testing).' }],
   'no-restricted-syntax': ['error', { selector: "NewExpression[callee.name='Date'][arguments.length=0]", message: 'Match logic must use frame counts, not real time.' }],
 };
 

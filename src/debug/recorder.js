@@ -9,7 +9,7 @@
 // one at every mark). Hand it to Claude with "the bug is at mark 2"; `npm run replay -- file.zip`
 // replays the match frame for frame (tools/replay/replay.mjs).
 //
-// Why it can replay: match logic runs on frame counts and Math.random only (CLAUDE.md: Testing). While
+// Why it can replay: match logic runs on frame counts and Math.random only (AGENTS.md: Testing). While
 // recording, Math.random gives match logic (setting up the match, every simulation step, training
 // buttons) numbers from a seeded sequence, and everything else (drawing, Phaser's own effects, which run
 // on real time) numbers from a separate one - so only the logic's numbers have to repeat. It also records
