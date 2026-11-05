@@ -11,7 +11,7 @@ try{
  const before=await page.evaluate(async()=>{
  const {settings}=await import('/src/settings.js'),P=await import('/src/progress.js'),{SHOP}=await import('/src/data/shop.js');
  for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);window.game.scene.start('Shop');await new Promise(r=>setTimeout(r,200));const shop=window.game.scene.getScene('Shop');
- const it=SHOP.flatMap(t=>t.items).find(i=>i.id==='cos-orrery');shop.openPreview(it);window.shopRef=shop;
+ const it=SHOP.flatMap(t=>t.items).find(i=>i.id==='cos-orrery');await shop.openPreview(it);window.shopRef=shop;
  return {coins:P.getCoins(),owns:P.owns(it.id),settings:JSON.stringify(settings)};
  });
  assert.equal(before.owns,false);

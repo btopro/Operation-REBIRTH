@@ -42,6 +42,7 @@ function demoSettings() {
 
 import { playMusic, playPlaylist, stopMusic } from '../audio/music.js';
 import { resolveSkins } from '../fighters/skins.js';
+import { queueSheets, matchPicks } from '../fighters/lazySheets.js';
 import { VIEW_W, VIEW_H, STEP_MS, FONT, PHYS, LIMIT_MAX, DIFFICULTY } from '../config.js';
 import { settings, MODE_NAMES, demoRequest } from '../settings.js';
 import { KeyboardController, GamepadController, MergedController, readPad } from '../input/controllers.js';
@@ -65,6 +66,20 @@ import { Recorder, recordingWanted } from '../debug/recorder.js';
 
 export class MatchScene extends Phaser.Scene {
   constructor() { super('Match'); }
+
+  /**
+   * Loads the costume strips this match's fighters wear (src/fighters/lazySheets.js) before create runs, and
+   * drops the ones nobody wears. Decides the title demo's random setup here (create then uses it), but draws
+   * no other random numbers: a RANDOM pick loads every fighter it could become.
+   */
+  preload() {
+    const data = this.sys.settings.data || {};
+    const soul = data.soulBattle && soulEncounter(data.soulBattle.soulId);
+    const demo = !data.shopPreview && !soul && demoRequest.next;
+    if (demo && !demoRequest.settings) demoRequest.settings = demoSettings();
+    const S = (soul && data.soulBattle.setup) || data.shopPreview?.setup || (demo ? demoRequest.settings : settings);
+    queueSheets(this, matchPicks(S, { demo, shopPreview: !!data.shopPreview, soulSkin: soul ? soul.skin || 0 : undefined }), { evict: true });
+  }
 
   create(data={}) {
     this.soulBattle=data.soulBattle&&soulEncounter(data.soulBattle.soulId)?data.soulBattle:null;this.soulEncounter=this.soulBattle?soulEncounter(this.soulBattle.soulId):null;this.resultSent=false;
