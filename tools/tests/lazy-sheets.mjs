@@ -22,6 +22,7 @@ try {
   const report = await page.evaluate(async () => {
     const { settings } = await import('/src/settings.js'), { skinsFor } = await import('/src/fighters/skins.js');
     const T = window.game.textures, has = (k) => T.exists(k);
+    const demo = window.game.scene.getScene('Match'), demoMissing = demo && demo.fighters ? demo.fighters.flatMap((f) => Object.values(f.sheets)).filter((k) => !has(k)) : [];   // the title demo never waits for a download
     const inferno = skinsFor('nu').findIndex((s) => s.name === 'INFERNO');
     // what the title has (the title demo may wear a costume, so stop it first and look at a NU costume)
     const play = async (picks, skins) => {
@@ -37,9 +38,10 @@ try {
     const missingIn = await play(['nu', 'mr-wake'], [inferno, 0]);
     const inMatch = has('nu_inferno_moves') && has('nu_inferno_run');
     const missingAfter = await play(['soul-summoner', 'mr-wake'], [0, 0]);
-    return { atTitle, missingIn, inMatch, dropped: !has('nu_inferno_moves'), idleKept: has('nu_inferno_idle'), missingAfter };
+    return { demoMissing, atTitle, missingIn, inMatch, dropped: !has('nu_inferno_moves'), idleKept: has('nu_inferno_idle'), missingAfter };
   });
   assert.deepEqual(errors, [], 'no page errors');
+  assert.deepEqual(report.demoMissing, [], 'the title demo only wears costumes that are already loaded');
   assert.equal(report.atTitle.idle, true, 'a costume\'s idle strip is loaded at boot (menus show it)');
   assert.equal(report.atTitle.moves, false, 'a costume\'s moves strip is not loaded at boot');
   assert.deepEqual(report.missingIn, [], 'every strip the fighters use was there when the match started');
