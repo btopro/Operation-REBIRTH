@@ -14,7 +14,7 @@ try {
   MatchScene.prototype.update=function(){};
   for(const s of window.game.scene.getScenes(true))window.game.scene.stop(s.scene.key);
   Object.assign(settings,{mode:'stock',stocks:5,cpuCount:2,difficulty:0,cpuLevels:[0,0,0],extraPads:[],p1Pad:null,picks:['soul-summoner','mr-wake','hero-knight'],skins:[0,0,0],stage:'sky-sanctum',hazards:false,items:false,crt:false});
-  window.game.scene.start('Match');await new Promise(r=>setTimeout(r,250));
+  window.game.scene.start('Match');await new Promise(r=>setTimeout(r,250));while(!window.game.scene.isActive('Match')||!window.game.scene.getScene('Match').fighters?.length)await new Promise(r=>setTimeout(r,30));
   const m=window.game.scene.getScene('Match');m.countdown=0;m.bigText.setText('');m.intros=null;
   for(let i=0;i<40;i++)m.tick();
   const caster=m.fighters[0];caster.placeAt(-145,-1);m.fighters[1].placeAt(95,-1);m.fighters[2].placeAt(175,-1);
@@ -83,7 +83,7 @@ try {
   const index=skinsFor('hero-knight').findIndex(s=>s.name==='HYLIAN HERO');
   facts.heroSkinFree=index>=0&&skinUnlocked('hero-knight',index);
   Object.assign(settings,{picks:['hero-knight','mr-wake'],skins:[index,0],cpuCount:1});
-  window.game.scene.stop('Match');window.game.scene.start('Match');await new Promise(r=>setTimeout(r,250));
+  window.game.scene.stop('Match');window.game.scene.start('Match');await new Promise(r=>setTimeout(r,250));while(!window.game.scene.isActive('Match')||!window.game.scene.getScene('Match').fighters?.length)await new Promise(r=>setTimeout(r,30));
   const next=window.game.scene.getScene('Match');next.countdown=0;next.intros=null;next.bigText.setText('');
   for(let i=0;i<20;i++)next.tick();next.draw();
   const lacy=next.fighters[0],beforeFairy=lacy.fairyPosition?.x;

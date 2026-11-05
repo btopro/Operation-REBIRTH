@@ -51,8 +51,9 @@ try {
   await page.evaluate(async () => { const r = await navigator.serviceWorker.getRegistration(); await r.update(); });
   await page.waitForFunction(() => window.game.scene.getScene('Title').updateBtn?.visible, null, { timeout: 60000 });
   const before = await page.evaluate(() => fetch('loading-screens.js').then((r) => r.text()));
+  const reloaded = page.waitForEvent('load', { timeout: 90000 });        // (listen first: the reload can be quick)
   await page.keyboard.press('u', { delay: 100 });
-  await page.waitForEvent('load', { timeout: 60000 });
+  await reloaded;
   await title();
   const after = await page.evaluate(() => fetch('loading-screens.js').then((r) => r.text()));
   const keys = await page.evaluate(async () => (await (await caches.open('rebirth')).keys()).map((r) => r.url).filter((u) => u.includes('loading-screens.js')));
